@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Parkir - Redirecting...</title>
+    
+    <!-- Auto redirect ke login -->
+    <meta http-equiv="refresh" content="0; url=views/login.html">
+    
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: white;
+        }
+        .loader {
+            text-align: center;
+        }
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        p {
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        a {
+            color: white;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="loader">
+        <div class="spinner"></div>
+        <p>🅿️ Sistem Parkir Pintar</p>
+        <p>Redirecting to login...</p>
+        <p><small>Jika tidak redirect otomatis, <a href="views/login.html">klik di sini</a></small></p>
+    </div>
+
+    <script>
+        // Backup redirect dengan JavaScript
+        setTimeout(function() {
+            window.location.href = 'views/login.html';
+        }, 100);
+    </script>
+</body>
+</html>

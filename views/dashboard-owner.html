@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Owner - Parkir Motor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <header class="topbar">
+            <div>
+                <h1>Dashboard Owner - Parkir Motor</h1>
+                <div class="muted small">Monitoring & Rekap Sistem Parkir Motor</div>
+            </div>
+            <div class="meta">
+                <span class="user-badge">👤 <span id="userName">Owner</span></span>
+                <button class="logout-btn" onclick="handleLogout()">Logout</button>
+            </div>
+        </header>
+
+        <!-- SECTION: STATISTIK RINGKASAN -->
+        <section class="card">
+            <h2>📊 Ringkasan Hari Ini</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">🏍️</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Total Motor</div>
+                        <div class="stat-value" id="totalHariIni">0</div>
+                    </div>
+                </div>
+                <!-- Stat Mobil dihapus - Motor only -->
+                <div class="stat-card primary">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Pendapatan</div>
+                        <div class="stat-value" id="pendapatanHariIni">Rp 0</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: FILTER & EXPORT -->
+        <section class="card">
+            <h2>🗓️ Rekap Berdasarkan Periode</h2>
+            <div class="filter-section">
+                <div class="controls">
+                    <div class="form-group-inline">
+                        <label>Dari Tanggal:</label>
+                        <input type="date" id="tanggalDari">
+                    </div>
+                    <div class="form-group-inline">
+                        <label>Sampai Tanggal:</label>
+                        <input type="date" id="tanggalSampai">
+                    </div>
+                    <button onclick="filterData()" class="btn-primary">🔍 Tampilkan</button>
+                    <button onclick="exportData()" class="btn-success">📥 Export Excel</button>
+                </div>
+            </div>
+
+            <!-- Ringkasan Periode -->
+            <div class="summary-box" id="summaryBox" style="display:none;">
+                <h3>Ringkasan Periode: <span id="periodeText"></span></h3>
+                <div class="summary-grid">
+                    <div>
+                        <strong>Total Transaksi:</strong>
+                        <span id="summaryTotal">0</span>
+                    </div>
+                    <!-- Summary Mobil dihapus - Motor only -->
+                    <div>
+                        <strong>Total Pendapatan:</strong>
+                        <span class="text-success" id="summaryPendapatan">Rp 0</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: GRAFIK PENDAPATAN -->
+        <section class="card">
+            <h2>📈 Grafik Pendapatan Mingguan</h2>
+            <div class="chart-box-full">
+                <canvas id="pendapatanChart"></canvas>
+            </div>
+        </section>
+
+        <!-- SECTION: TABEL TRANSAKSI -->
+        <section class="card">
+            <h2>📋 Data Transaksi Motor</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Tanggal</th>
+                            <th>Card ID</th>
+                            <th>Plat Nomor</th>
+                            <!-- Kolom Jenis dihapus -->
+                            <th>Waktu Masuk</th>
+                            <th>Waktu Keluar</th>
+                            <th>Durasi</th>
+                            <th>Biaya</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transaksi-body">
+                        <tr><td colspan="8" class="text-center">Memuat data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SECTION: MOTOR SEDANG PARKIR (READ-ONLY) -->
+        <section class="card">
+            <h2>🅿️ Motor Sedang Parkir (Real-time)</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Card ID</th>
+                            <th>Plat Nomor</th>
+                            <!-- Kolom Jenis dihapus -->
+                            <th>Waktu Masuk</th>
+                            <th>Durasi</th>
+                            <th>Estimasi Biaya</th>
+                        </tr>
+                    </thead>
+                    <tbody id="parkir-body">
+                        <tr><td colspan="5" class="text-center">Memuat data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <!-- CHART.JS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- XLSX.JS for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <!-- MAIN SCRIPT -->
+    <script type="module">
+        import { AuthController } from '../controllers/auth-controller.js'
+        import { OwnerController } from '../controllers/owner-controller.js'
+        
+        // Check auth & get profile
+        const authResult = await AuthController.checkAuth('owner')
+        if (!authResult.success) {
+            throw new Error('Not authenticated')
+        }
+        
+        // Set nama user
+        document.getElementById('userName').textContent = authResult.profile.nama
+        
+        // Initialize controller
+        window.ownerController = new OwnerController(authResult.profile)
+        
+        // Initialize chart
+        const pendapatanCtx = document.getElementById('pendapatanChart')
+        
+        window.pendapatanChart = new Chart(pendapatanCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Pendapatan (Rp)',
+                    data: [],
+                    borderColor: '#0ea5a4',
+                    backgroundColor: 'rgba(14, 165, 164, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'top' },
+                    title: { display: true, text: 'Trend Pendapatan 7 Hari Terakhir' }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return 'Rp ' + value.toLocaleString('id-ID')
+                            }
+                        }
+                    }
+                }
+            }
+        })
+        
+        // Init controller
+        await ownerController.init()
+        
+        // Global functions
+        window.filterData = async () => {
+            await ownerController.filterData()
+        }
+        
+        window.exportData = () => {
+            ownerController.exportToExcel()
+        }
+        
+        window.handleLogout = async () => {
+            if (confirm('Yakin ingin logout?')) {
+                await AuthController.handleLogout()
+                window.location.href = 'login.html'
+            }
+        }
+    </script>
+</body>
+</html>

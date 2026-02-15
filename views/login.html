@@ -1,0 +1,92 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sistem Parkir</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-icon">🅿️</div>
+                <h2>Sistem Parkir Pintar</h2>
+                <div class="subtitle">Silakan masuk ke dashboard</div>
+            </div>
+
+            <form id="loginForm" onsubmit="return false;">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input id="email" type="email" placeholder="email@contoh.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Password</label>
+                    <input id="password" type="password" placeholder="Masukkan password" required>
+                </div>
+
+                <button type="submit" class="login-btn" id="loginBtn">
+                    <span id="loginBtnText">Masuk</span>
+                    <span id="loginBtnLoading" style="display:none;">⏳ Loading...</span>
+                </button>
+            </form>
+
+            <div id="errorMsg" class="error-msg" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { AuthController } from '../controllers/auth-controller.js'
+        import { showError } from '../utils/notification.js'
+        
+        // Handle login
+        async function handleLogin() {
+            const email = document.getElementById('email').value
+            const password = document.getElementById('password').value
+            const errorMsg = document.getElementById('errorMsg')
+            const btnText = document.getElementById('loginBtnText')
+            const btnLoading = document.getElementById('loginBtnLoading')
+            
+            // Show loading
+            btnText.style.display = 'none'
+            btnLoading.style.display = 'inline'
+            errorMsg.style.display = 'none'
+            
+            // Login via controller
+            const result = await AuthController.handleLogin(email, password)
+            
+            if (!result.success) {
+                // Show error
+                errorMsg.textContent = result.error
+                errorMsg.style.display = 'block'
+                btnText.style.display = 'inline'
+                btnLoading.style.display = 'none'
+                return
+            }
+            
+            // Redirect based on role
+            if (result.profile.role === 'owner') {
+                window.location.href = 'dashboard-owner.html'
+            } else if (result.profile.role === 'petugas') {
+                window.location.href = 'dashboard-petugas.html'
+            } else {
+                showError('Role tidak dikenali')
+                btnText.style.display = 'inline'
+                btnLoading.style.display = 'none'
+            }
+        }
+        
+        // Form submit
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault()
+            handleLogin()
+        })
+        
+        // Make handleLogin global for onclick
+        window.handleLogin = handleLogin
+    </script>
+</body>
+</html>
