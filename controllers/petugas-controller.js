@@ -2,38 +2,39 @@ import { KendaraanModel } from '../models/kendaraan-model.js'
 import { TarifModel } from '../models/tarif-model.js'
 import { mqttController } from './mqtt-controller.js'
 import { MQTT_CONFIG } from '../config/mqtt-config.js'
-import {
-    formatDurasi,
-    hitungDurasi,
+import { supabase } from '../config/supabase.js'
+import { 
+    formatDurasi, 
+    hitungDurasi, 
     hitungBiaya,
-    validateCardId,
-    validateJenis,
     formatRupiah,
-    groupByTanggal,
-    countByJenis
+    groupByTanggal
 } from '../utils/helpers.js'
 import { showSuccess, showError, showWarning } from '../utils/notification.js'
 
-// PETUGAS CONTROLLER
-
+// ===============================================
+// PETUGAS CONTROLLER - REVISED (1 RFID Toggle Mode)
+// ===============================================
 // Handle business logic for dashboard petugas
+// 1 RFID dipakai untuk entry DAN exit.
+// Logic: cek status card di DB → tentukan check-in atau check-out
+
 export class PetugasController {
     constructor(profile) {
         this.profile = profile
         this.tarifData = {}
-        this.currentKendaraanId = null
     }
-
+    
     // Initialize
     async init() {
         await this.loadTarif()
         await this.loadData()
         this.initMQTT()
-
-        // Auto refresh every 30 seconds
-        setInterval(() => this.loadData(), 30000)
+        
+        // Auto refresh every 10 seconds
+        setInterval(() => this.loadData(), 10000)
     }
-
+    
     // Load tarif
     async loadTarif() {
         const result = await TarifModel.getTarifMap()
@@ -42,88 +43,136 @@ export class PetugasController {
             this.updateTarifUI()
         }
     }
-
-    // Update tarif UI (Motor only)
+    
+    // Update tarif UI
     updateTarifUI() {
         const tarifMotor = document.getElementById('tarifMotor')
-
-        if (tarifMotor) tarifMotor.textContent = formatRupiah(this.tarifData['Motor'])
+        if (tarifMotor) tarifMotor.textContent = formatRupiah(this.tarifData['Motor']) + '/jam'
     }
-
+    
     // Load all data
     async loadData() {
-        await this.loadKendaraanParkir()
+        await this.loadCheckIn()
+        await this.loadCheckOut()
         await this.loadRiwayat()
         await this.updateCharts()
     }
-
-    // Load kendaraan parkir
-    async loadKendaraanParkir() {
-        const result = await KendaraanModel.getKendaraanParkir()
-        if (!result.success) {
-            console.error('Error loading parkir:', result.error)
+    
+    // Load TABEL 1: Check-In (status IN)
+    async loadCheckIn() {
+        const { data, error } = await supabase
+            .from('kendaraan')
+            .select('*')
+            .eq('status', 'IN')
+            .order('waktu_masuk', { ascending: false })
+        
+        if (error) {
+            console.error('Error loading check-in:', error)
             return
         }
-
-        const parkir = result.data
-
-        // Update jumlah
-        const jumlahEl = document.getElementById('jumlahParkir')
-        if (jumlahEl) jumlahEl.textContent = parkir.length
-
-        // Update table
-        const tbody = document.getElementById('parkir-body')
+        
+        const checkIn = data || []
+        
+        const jumlahEl = document.getElementById('jumlahCheckIn')
+        if (jumlahEl) jumlahEl.textContent = checkIn.length
+        
+        const tbody = document.getElementById('checkin-body')
         if (!tbody) return
-
-        if (parkir.length === 0) {
+        
+        if (checkIn.length === 0) {
             tbody.innerHTML = `
-                <tr><td colspan="6" class="text-center muted">Tidak ada motor parkir</td></tr>
+                <tr><td colspan="6" class="text-center muted">Belum ada motor parkir</td></tr>
             `
             return
         }
-
-        tbody.innerHTML = parkir.map(k => {
+        
+        tbody.innerHTML = checkIn.map((k, index) => {
             const durasiMenit = hitungDurasi(k.waktu_masuk)
             const estimasiBiaya = hitungBiaya(durasiMenit, this.tarifData[k.jenis] || 0)
-
+            
             return `
                 <tr>
+                    <td>${index + 1}</td>
                     <td><strong>${k.card_id}</strong></td>
                     <td>${k.plat_nomor || '-'}</td>
                     <td>${new Date(k.waktu_masuk).toLocaleString('id-ID')}</td>
                     <td>${formatDurasi(durasiMenit)}</td>
                     <td><strong>${formatRupiah(estimasiBiaya)}</strong></td>
+                </tr>
+            `
+        }).join('')
+    }
+    
+    // Load TABEL 2: Check-Out (status OUT)
+    async loadCheckOut() {
+        const { data, error } = await supabase
+            .from('kendaraan')
+            .select('*')
+            .eq('status', 'OUT')
+            .order('waktu_keluar', { ascending: false })
+        
+        if (error) {
+            console.error('Error loading check-out:', error)
+            return
+        }
+        
+        const checkOut = data || []
+        
+        const jumlahEl = document.getElementById('jumlahCheckOut')
+        if (jumlahEl) jumlahEl.textContent = checkOut.length
+        
+        const tbody = document.getElementById('checkout-body')
+        if (!tbody) return
+        
+        if (checkOut.length === 0) {
+            tbody.innerHTML = `
+                <tr><td colspan="8" class="text-center muted">Belum ada motor checkout</td></tr>
+            `
+            return
+        }
+        
+        tbody.innerHTML = checkOut.map((k, index) => {
+            return `
+                <tr class="highlight-row">
+                    <td>${index + 1}</td>
+                    <td><strong>${k.card_id}</strong></td>
+                    <td>${k.plat_nomor || '-'}</td>
+                    <td>${new Date(k.waktu_masuk).toLocaleString('id-ID')}</td>
+                    <td>${new Date(k.waktu_keluar).toLocaleString('id-ID')}</td>
+                    <td>${formatDurasi(k.durasi_menit)}</td>
+                    <td><strong class="text-success" style="font-size: 1.1em;">${formatRupiah(k.biaya)}</strong></td>
                     <td>
-                        <button class="btn-danger" onclick="petugasController.showModalKeluar('${k.id}', '${k.card_id}', '${k.plat_nomor || '-'}', '${k.jenis}', ${durasiMenit})">
-                            🚪 Keluar
+                        <button class="btn-primary" onclick="bukaPalang('${k.id}')">
+                            🚪 Buka Palang
                         </button>
                     </td>
                 </tr>
             `
         }).join('')
     }
-
-    // Load riwayat
+    
+    // Load TABEL 3: Riwayat (status DONE)
     async loadRiwayat() {
         const result = await KendaraanModel.getKendaraanSelesai(10)
         if (!result.success) {
             console.error('Error loading riwayat:', result.error)
             return
         }
-
-        const keluar = result.data
-        const tbody = document.getElementById('keluar-body')
+        
+        const riwayat = result.data
+        const tbody = document.getElementById('riwayat-body')
         if (!tbody) return
-
-        if (keluar.length === 0) {
+        
+        if (riwayat.length === 0) {
             tbody.innerHTML = `
-                <tr><td colspan="6" class="text-center muted">Belum ada riwayat</td></tr>
+                <tr><td colspan="7" class="text-center muted">Belum ada riwayat</td></tr>
             `
             return
         }
-
-        tbody.innerHTML = keluar.map(k => `
+        
+        tbody.innerHTML = riwayat.map((k, index) => `
             <tr>
+                <td>${index + 1}</td>
                 <td><strong>${k.card_id}</strong></td>
                 <td>${k.plat_nomor || '-'}</td>
                 <td>${new Date(k.waktu_masuk).toLocaleString('id-ID')}</td>
@@ -133,186 +182,132 @@ export class PetugasController {
             </tr>
         `).join('')
     }
-
-    // Handle kendaraan masuk (manual input)
-    async handleKendaraanMasuk(cardId, platNomor, jenis) {
-        // Validasi
-        const cardValidation = validateCardId(cardId)
-        if (!cardValidation.valid) {
-            showError(cardValidation.error)
+    
+    // Handle "Buka Palang" button (Update status OUT → DONE)
+    async handleBukaPalang(kendaraanId) {
+        if (!kendaraanId) return
+        
+        const { data, error } = await supabase
+            .from('kendaraan')
+            .update({
+                status: 'DONE',
+                petugas_keluar: this.profile.nama
+            })
+            .eq('id', kendaraanId)
+            .select()
+            .single()
+        
+        if (error) {
+            showError('Gagal membuka palang: ' + error.message)
             return
         }
-
-        const jenisValidation = validateJenis(jenis)
-        if (!jenisValidation.valid) {
-            showError(jenisValidation.error)
-            return
-        }
-
-        // Check in via model
-        const result = await KendaraanModel.checkIn(
-            cardId.trim(),
-            platNomor ? platNomor.trim() : null,
-            jenis,
-            this.profile.nama
-        )
-
-        if (!result.success) {
-            if (result.code === 'ALREADY_PARKED') {
-                showWarning(result.error)
-            } else {
-                showError('Gagal memasukkan kendaraan: ' + result.error)
-            }
-            return
-        }
-
-        // Success
-        showSuccess(`✅ Motor ${cardId} berhasil masuk!`)
-
-        // Clear form
-        const cardIdInput = document.getElementById('cardId')
-        const platInput = document.getElementById('platNomor')
-        if (cardIdInput) cardIdInput.value = ''
-        if (platInput) platInput.value = ''
-
-        // Reload data
+        
+        // MQTT: Buka palang Exit
+        mqttController.publishServo('exit', 'open')
+        
+        // MQTT: LCD terima kasih
+        mqttController.publishLCD('Terima Kasih', 'Selamat Jalan')
+        
+        showSuccess(`✅ Palang dibuka! Motor ${data.card_id} keluar. Biaya: ${formatRupiah(data.biaya)}`)
+        
         await this.loadData()
     }
-
-    // Show modal keluar
-    showModalKeluar(id, cardId, platNomor, jenis, durasiMenit) {
-        this.currentKendaraanId = id
-
-        const biaya = hitungBiaya(durasiMenit, this.tarifData[jenis] || 0)
-        const durasiJam = Math.ceil(durasiMenit / 60)
-
-        const modal = document.getElementById('modalKeluar')
-        const detail = document.getElementById('detailKeluar')
-
-        if (!modal || !detail) return
-
-        detail.innerHTML = `
-            <table class="detail-table">
-                <tr>
-                    <td><strong>Card ID:</strong></td>
-                    <td>${cardId}</td>
-                </tr>
-                <tr>
-                    <td><strong>Plat Nomor:</strong></td>
-                    <td>${platNomor}</td>
-                </tr>
-                <tr>
-                    <td><strong>Jenis:</strong></td>
-                    <td>Motor</td>
-                </tr>
-                <tr>
-                    <td><strong>Durasi:</strong></td>
-                    <td>${formatDurasi(durasiMenit)} (${durasiJam} jam)</td>
-                </tr>
-                <tr>
-                    <td><strong>Tarif:</strong></td>
-                    <td>${formatRupiah(this.tarifData['Motor'])}/jam</td>
-                </tr>
-                <tr class="total-row">
-                    <td><strong>TOTAL BIAYA:</strong></td>
-                    <td><strong class="text-primary">${formatRupiah(biaya)}</strong></td>
-                </tr>
-            </table>
-        `
-
-        modal.style.display = 'flex'
-    }
-
-    // Close modal
-    closeModal() {
-        const modal = document.getElementById('modalKeluar')
-        if (modal) modal.style.display = 'none'
-        this.currentKendaraanId = null
-    }
-
-    // Konfirmasi keluar
-    async handleKonfirmasiKeluar() {
-        if (!this.currentKendaraanId) return
-
-        // Ambil data kendaraan dulu
-        const kendaraanResult = await KendaraanModel.getById(this.currentKendaraanId)
-        if (!kendaraanResult.success) {
-            showError('Gagal mengambil data kendaraan')
-            return
-        }
-
-        const kendaraan = kendaraanResult.data
-
-        // Kalau masih IN, lakukan checkOut dulu
-        let finalKendaraan = kendaraan
-
-        if (kendaraan.status === 'IN') {
-            const durasiMenit = hitungDurasi(kendaraan.waktu_masuk)
-            const biaya = hitungBiaya(durasiMenit, this.tarifData[kendaraan.jenis] || 0)
-
-            const checkoutResult = await KendaraanModel.checkOut(
-                kendaraan.card_id,
-                new Date().toISOString(),
-                durasiMenit,
-                biaya
-            )
-
-            if (!checkoutResult.success) {
-                showError('Gagal checkout: ' + checkoutResult.error)
-                return
-            }
-
-            finalKendaraan = checkoutResult.data // <-- pakai data terbaru
-        }
-
-        // Baru konfirmasi DONE
-        const result = await KendaraanModel.konfirmasiKeluar(
-            this.currentKendaraanId,
-            this.profile.nama
-        )
-
-        if (!result.success) {
-            showError('Gagal konfirmasi keluar')
-            return
-        }
-
-        showSuccess(`✅ Motor ${finalKendaraan.card_id} keluar. Biaya: ${formatRupiah(finalKendaraan.biaya)}`)
-
-        this.closeModal()
-        await this.loadData()
-    }
-
-
+    
     // Initialize MQTT
     initMQTT() {
         mqttController.init()
-
-        // Handle RFID Entry
+        
+        // Update status UI
+        mqttController.client.on('connect', () => {
+            const statusEl = document.getElementById('mqttStatus')
+            if (statusEl) {
+                statusEl.innerHTML = '<span class="status-dot online"></span><span>Terhubung</span>'
+            }
+        })
+        
+        mqttController.client.on('error', () => {
+            const statusEl = document.getElementById('mqttStatus')
+            if (statusEl) {
+                statusEl.innerHTML = '<span class="status-dot offline"></span><span>Terputus</span>'
+            }
+        })
+        
+        // =============================================
+        // TOGGLE MODE: 1 RFID untuk Entry & Exit
+        // Semua scan masuk lewat topic entry/rfid.
+        // Logic di sini yang tentukan check-in atau check-out
+        // berdasarkan status card di database.
+        // =============================================
         mqttController.onMessage(MQTT_CONFIG.topics.rfidEntry, async (payload) => {
-            await this.handleRFIDEntry(payload)
+            await this.handleRFIDToggle(payload)
         })
 
-        // Handle RFID Exit
+        // Topic exit/rfid tetap dihandle untuk kompatibilitas
+        // saat nanti pakai 2 RFID di sekolah
         mqttController.onMessage(MQTT_CONFIG.topics.rfidExit, async (payload) => {
             await this.handleRFIDExit(payload)
         })
     }
 
-    // Handle RFID Entry from IoT
+    // =============================================
+    // HANDLE RFID TOGGLE (1 RFID Mode)
+    // Cek status card di DB:
+    // - Tidak ada / status DONE → Check-In
+    // - Status IN               → Check-Out
+    // - Status OUT              → Sudah checkout, tunggu petugas
+    // =============================================
+    async handleRFIDToggle(payload) {
+        const cardId = payload.card_id
+        console.log('📡 RFID Scan:', cardId)
+
+        // Cek status card di DB
+        const kendaraanResult = await KendaraanModel.getByCardId(cardId)
+
+        if (!kendaraanResult.success) {
+            showError('Error cek kartu: ' + kendaraanResult.error)
+            mqttController.publishLCD('ERROR!', 'Hubungi Petugas')
+            return
+        }
+
+        const kendaraan = kendaraanResult.data
+
+        // Tidak ada data / status DONE → proses Check-In
+        if (!kendaraan || kendaraan.status === 'DONE') {
+            console.log('→ Status: Belum parkir → Check-In')
+            await this.handleRFIDEntry(payload)
+            return
+        }
+
+        // Status IN → proses Check-Out
+        if (kendaraan.status === 'IN') {
+            console.log('→ Status: Sedang parkir → Check-Out')
+            await this.handleRFIDExit(payload)
+            return
+        }
+
+        // Status OUT → sudah checkout, menunggu petugas buka palang
+        if (kendaraan.status === 'OUT') {
+            console.log('→ Status: Menunggu petugas')
+            mqttController.publishLCD('Tunggu Petugas', 'Proses Bayar...')
+            showWarning(`⚠️ Motor ${cardId} sudah checkout. Menunggu petugas buka palang.`)
+            return
+        }
+    }
+    
+    // Handle RFID Entry → Check-In
     async handleRFIDEntry(payload) {
         const cardId = payload.card_id
-
-        console.log('🏍️ RFID Entry detected:', cardId)
-        showSuccess(`🏍️ RFID Entry: ${cardId} `)
-
-        // Check in via model (Motor only)
+        
+        console.log('🏍️ RFID Entry (Check-In):', cardId)
+        showSuccess(`🏍️ RFID Entry: ${cardId}`)
+        
         const result = await KendaraanModel.checkIn(
             cardId,
-            null, // plat nomor optional
-            'Motor', // Motor only!
+            null,       // plat nomor optional
+            'Motor',
             this.profile.nama
         )
-
+        
         if (!result.success) {
             if (result.code === 'ALREADY_PARKED') {
                 mqttController.publishLCD('DITOLAK!', 'Sudah Parkir')
@@ -323,81 +318,80 @@ export class PetugasController {
             }
             return
         }
-
-        // Success - buka palang & tampilkan pesan
+        
+        // Buka palang entry & tampilkan pesan
         mqttController.publishServo('entry', 'open')
         mqttController.publishLCD('Selamat Datang', 'Silakan Masuk')
-
+        
         await this.loadData()
         showSuccess(`✅ Motor ${cardId} berhasil masuk!`)
     }
-
-    // Handle RFID Exit from IoT
+    
+    // Handle RFID Exit → Check-Out (status OUT, tunggu petugas)
     async handleRFIDExit(payload) {
         const cardId = payload.card_id
-
-        console.log('🚪 RFID Exit detected:', cardId)
-        showSuccess(`🚪 RFID Exit: ${cardId} `)
-
-        // Get kendaraan
+        
+        console.log('🚪 RFID Exit (Check-Out):', cardId)
+        showSuccess(`🚪 RFID Exit: ${cardId}`)
+        
+        // Get data kendaraan
         const kendaraanResult = await KendaraanModel.getByCardId(cardId)
         if (!kendaraanResult.success) {
             showError('Error: ' + kendaraanResult.error)
             return
         }
-
+        
         if (!kendaraanResult.data) {
             mqttController.publishLCD('DITOLAK!', 'Tidak Parkir')
             showWarning(`⚠️ Motor ${cardId} tidak sedang parkir!`)
             return
         }
-
+        
         const kendaraan = kendaraanResult.data
-
-        // Hitung biaya
+        
+        // Hitung durasi & biaya
         const durasiMenit = hitungDurasi(kendaraan.waktu_masuk)
         const biaya = hitungBiaya(durasiMenit, this.tarifData[kendaraan.jenis] || 0)
-
-        // Check out (status jadi OUT, menunggu konfirmasi)
-        const checkoutResult = await KendaraanModel.checkOut(
-            cardId,
-            new Date().toISOString(),
-            durasiMenit,
-            biaya
-        )
-
-        if (!checkoutResult.success) {
-            showError('Error: ' + checkoutResult.error)
+        
+        // Update status → OUT (menunggu konfirmasi petugas)
+        const { data, error } = await supabase
+            .from('kendaraan')
+            .update({
+                waktu_keluar: new Date().toISOString(),
+                durasi_menit: durasiMenit,
+                biaya: biaya,
+                status: 'OUT'
+            })
+            .eq('id', kendaraan.id)
+            .select()
+            .single()
+        
+        if (error) {
+            showError('Error: ' + error.message)
             return
         }
-
+        
         // Tampilkan biaya di LCD
-        mqttController.publishLCD(`Biaya: ${formatRupiah(biaya)} `, 'Bayar ke Petugas')
-
-        // Auto-buka modal konfirmasi
-        this.showModalKeluar(kendaraan.id, cardId, kendaraan.plat_nomor, kendaraan.jenis, durasiMenit)
-
+        mqttController.publishLCD(`Biaya:${formatRupiah(biaya)}`, 'Bayar ke Petugas')
+        
         await this.loadData()
-        showSuccess(`💰 Motor ${cardId} - Biaya: ${formatRupiah(biaya)} `)
+        showSuccess(`💰 Motor ${cardId} checkout. Biaya: ${formatRupiah(biaya)}. Menunggu pembayaran...`)
     }
-
+    
     // Update charts
     async updateCharts() {
-        // Get all data for charts
         const result = await KendaraanModel.getAllForChart()
         if (!result.success) return
-
+        
         const data = result.data
-
-        // Update harian chart (chart jenis dihapus - Motor only)
         const grouped = groupByTanggal(data)
         const last7 = Object.entries(grouped).slice(-7)
         const labels = last7.map(e => e[0])
         const values = last7.map(e => e[1].length)
-
+        
         this.updateHarianChart(labels, values)
     }
-
+    
     // Update harian chart
     updateHarianChart(labels, values) {
         if (window.harianChart) {
@@ -406,4 +400,4 @@ export class PetugasController {
             window.harianChart.update()
         }
     }
-}   
+}

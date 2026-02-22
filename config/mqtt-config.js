@@ -11,11 +11,11 @@ export const MQTT_CONFIG = {
     
     // Topics (ganti 'test' dengan nama kamu)
     topics: {
-        rfidEntry: 'parking/test/entry/rfid',
-        rfidExit: 'parking/test/exit/rfid',
-        servoEntry: 'parking/test/entry/servo',
-        servoExit: 'parking/test/exit/servo',
-        lcd: 'parking/test/lcd'
+        rfidEntry: 'parking/bintang/entry/rfid',
+        rfidExit: 'parking/bintang/exit/rfid',
+        servoEntry: 'parking/bintang/entry/servo',
+        servoExit: 'parking/bintang/exit/servo',
+        lcd: 'parking/bintang/lcd'
     },
     
     // Options

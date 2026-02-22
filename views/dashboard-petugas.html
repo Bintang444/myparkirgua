@@ -14,24 +14,13 @@
         <header class="topbar">
             <div>
                 <h1>Dashboard Petugas Parkir Motor</h1>
-                <div class="muted small">Panel manajemen parkir motor — mudah & cepat</div>
+                <div class="muted small">Monitoring & Kontrol Sistem Parkir IoT</div>
             </div>
             <div class="meta">
                 <span class="user-badge">👤 <span id="userName">Petugas</span></span>
                 <button class="logout-btn" onclick="handleLogout()">Logout</button>
             </div>
         </header>
-
-        <!-- SECTION: MOTOR MASUK -->
-        <section class="card">
-            <h2>🏍️ Motor Masuk</h2>
-            <div class="controls">
-                <input id="cardId" placeholder="Card ID RFID (cth: 1234567890)" style="min-width: 220px;">
-                <input id="platNomor" placeholder="Plat Nomor (opsional: B 1234 XY)" style="min-width: 220px;">
-                <!-- Dropdown Jenis dihapus - Motor only -->
-                <button onclick="handleMasuk()">Masukkan</button>
-            </div>
-        </section>
 
         <!-- SECTION: TARIF INFO -->
         <section class="card info-card">
@@ -40,32 +29,78 @@
                     <div class="info-label">Tarif Parkir Motor</div>
                     <div class="info-value" id="tarifMotor">Rp 2.000/jam</div>
                 </div>
-                <!-- Tarif Mobil dihapus -->
                 <div class="info-item">
-                    <div class="info-label">Motor Parkir</div>
-                    <div class="info-value" id="jumlahParkir">0</div>
+                    <div class="info-label">Motor Sedang Parkir</div>
+                    <div class="info-value" id="jumlahCheckIn">0</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Menunggu Konfirmasi</div>
+                    <div class="info-value" id="jumlahCheckOut">0</div>
                 </div>
             </div>
         </section>
 
-        <!-- SECTION: MOTOR SEDANG PARKIR -->
+        <!-- SECTION: MQTT STATUS -->
         <section class="card">
-            <h2>🅿️ Motor Sedang Parkir</h2>
+            <h2>📡 Status Koneksi MQTT</h2>
+            <div class="mqtt-status">
+                <div class="status-indicator" id="mqttStatus">
+                    <span class="status-dot offline"></span>
+                    <span>Menghubungkan...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: TABEL 1 - CHECK-IN (Status IN) -->
+        <section class="card">
+            <h2>🅿️ Motor Check-In (Sedang Parkir)</h2>
+            <div class="table-info muted">
+                Motor yang sudah scan RFID Entry dan sedang parkir
+            </div>
             <div class="table-responsive">
                 <table>
                     <thead>
                         <tr>
+                            <th>No</th>
                             <th>Card ID</th>
                             <th>Plat Nomor</th>
                             <th>Waktu Masuk</th>
                             <th>Durasi</th>
                             <th>Estimasi Biaya</th>
+                        </tr>
+                    </thead>
+                    <tbody id="checkin-body">
+                        <tr>
+                            <td colspan="6" class="text-center muted">Belum ada motor parkir</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SECTION: TABEL 2 - CHECK-OUT (Status OUT) -->
+        <section class="card">
+            <h2>🚪 Motor Check-Out (Menunggu Pembayaran)</h2>
+            <div class="table-info muted">
+                Motor yang sudah scan RFID Exit, menunggu pembayaran dan konfirmasi petugas
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Card ID</th>
+                            <th>Plat Nomor</th>
+                            <th>Waktu Masuk</th>
+                            <th>Waktu Keluar</th>
+                            <th>Durasi</th>
+                            <th>BIAYA</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
-                    <tbody id="parkir-body">
+                    <tbody id="checkout-body">
                         <tr>
-                            <td colspan="6" class="text-center">Memuat data...</td>
+                            <td colspan="8" class="text-center muted">Belum ada motor checkout</td>
                         </tr>
                     </tbody>
                 </table>
@@ -80,13 +115,17 @@
             </div>
         </section>
 
-        <!-- SECTION: RIWAYAT -->
+        <!-- SECTION: TABEL 3 - RIWAYAT (Status DONE) -->
         <section class="card">
-            <h2>📋 Riwayat Motor Keluar (10 Terakhir)</h2>
+            <h2>📋 Riwayat Transaksi Selesai (10 Terakhir)</h2>
+            <div class="table-info muted">
+                Motor yang sudah selesai transaksi dan keluar dari area parkir
+            </div>
             <div class="table-responsive">
                 <table>
                     <thead>
                         <tr>
+                            <th>No</th>
                             <th>Card ID</th>
                             <th>Plat Nomor</th>
                             <th>Waktu Masuk</th>
@@ -95,25 +134,14 @@
                             <th>Biaya</th>
                         </tr>
                     </thead>
-                    <tbody id="keluar-body">
+                    <tbody id="riwayat-body">
                         <tr>
-                            <td colspan="6" class="text-center">Memuat data...</td>
+                            <td colspan="7" class="text-center muted">Belum ada riwayat</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </section>
-    </div>
-
-    <!-- MODAL KONFIRMASI KELUAR -->
-    <div id="modalKeluar" class="modal" style="display:none;">
-        <div class="modal-content">
-            <h3>Konfirmasi Keluar Parkir</h3>
-            <div id="detailKeluar" class="detail-keluar"></div>
-            <div class="modal-actions">
-                <button class="btn-primary" onclick="handleKonfirmasi()">Konfirmasi & Buka Palang</button>
-            </div>
-        </div>
     </div>
 
     <!-- CHART.JS -->
@@ -139,7 +167,7 @@
         // Initialize controller
         window.petugasController = new PetugasController(authResult.profile)
 
-        // Initialize chart (hanya harian, chart jenis dihapus)
+        // Initialize chart
         const harianCtx = document.getElementById('harianChart')
 
         window.harianChart = new Chart(harianCtx, {
@@ -169,17 +197,9 @@
         // Init controller
         await petugasController.init()
 
-        // Global functions
-        window.handleMasuk = async () => {
-            const cardId = document.getElementById('cardId').value
-            const platNomor = document.getElementById('platNomor').value
-
-            // Hardcode Motor - jenis tidak perlu input
-            await petugasController.handleKendaraanMasuk(cardId, platNomor, 'Motor')
-        }
-
-        window.handleKonfirmasi = async () => {
-            await petugasController.handleKonfirmasiKeluar()
+        // Global function for "Buka Palang" button
+        window.bukaPalang = async (kendaraanId) => {
+            await petugasController.handleBukaPalang(kendaraanId)
         }
 
         window.handleLogout = async () => {
@@ -191,4 +211,4 @@
     </script>
 </body>
 
-</html>     
+</html>
