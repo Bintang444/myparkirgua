@@ -21,7 +21,7 @@ export class AuthController {
         
         // Get user profile
         const profileResult = await AuthModel.getUserProfile(loginResult.data.user.id)
-        if (!profileResult.success) {
+        if (!profileResult.success) { 
             return profileResult
         }
         

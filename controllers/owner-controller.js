@@ -276,6 +276,6 @@ export class OwnerController {
             window.pendapatanChart.data.labels = labels
             window.pendapatanChart.data.datasets[0].data = values
             window.pendapatanChart.update()
-        }
+        } 
     }
 }

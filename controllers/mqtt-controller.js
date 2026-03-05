@@ -56,7 +56,7 @@ export class MQTTController {
                 console.error('Error processing MQTT message:', error)
             }
         })
-        
+         
         // Error
         this.client.on('error', (error) => {
             console.error('MQTT Error:', error)
