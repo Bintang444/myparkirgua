@@ -17,7 +17,7 @@ export function showNotification(message, type = 'success') {
         top: 20px;
         right: 20px;
         background: ${bgColor};
-        color: white;
+        color: white; 
         padding: 16px 24px;
         border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);

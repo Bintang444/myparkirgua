@@ -14,7 +14,7 @@ export function formatDurasi(menit) {
 }
 
 // Hitung durasi parkir dalam menit
-export function hitungDurasi(waktuMasuk, waktuKeluar = new Date()) {
+export function hitungDurasi(waktuMasuk, waktuKeluar = new Date()) { 
     const masuk = new Date(waktuMasuk)
     const keluar = new Date(waktuKeluar)
     return Math.floor((keluar - masuk) / 1000 / 60)
