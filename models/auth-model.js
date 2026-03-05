@@ -56,7 +56,7 @@ export class AuthModel {
         } catch (error) {
             return { success: false, error: error.message }
         }
-    }
+    } 
     
     // Check if user has specific role
     static async checkRole(userId, requiredRole) {

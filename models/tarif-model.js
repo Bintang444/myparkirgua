@@ -31,7 +31,7 @@ export class TarifModel {
             if (error) throw error
             return { success: true, tarif: data.tarif_per_jam }
         } catch (error) {
-            return { success: false, error: error.message }
+            return { success: false, error: error.message } 
         }
     }
     

@@ -9,7 +9,7 @@ export class KendaraanModel {
     static async getKendaraanParkir() {
         try {
             const { data, error } = await supabase
-                .from('kendaraan')
+                .from('transaksi')
                 .select('*')
                 .eq('status', 'IN')
                 .order('waktu_masuk', { ascending: false })
@@ -25,7 +25,7 @@ export class KendaraanModel {
     static async getKendaraanSelesai(limit = 10) {
         try {
             const { data, error } = await supabase
-                .from('kendaraan')
+                .from('transaksi')
                 .select('*')
                 .eq('status', 'DONE')
                 .order('waktu_keluar', { ascending: false })
@@ -38,11 +38,11 @@ export class KendaraanModel {
         }
     }
     
-    // Get kendaraan by card_id
+    // Get kendaraan by card_id (cek status IN)
     static async getByCardId(cardId) {
         try {
             const { data, error } = await supabase
-                .from('kendaraan')
+                .from('transaksi')
                 .select('*')
                 .eq('card_id', cardId)
                 .eq('status', 'IN')
@@ -61,11 +61,11 @@ export class KendaraanModel {
         }
     }
     
-    // Get kendaraan by ID
+    // Get transaksi by ID
     static async getById(id) {
         try {
             const { data, error } = await supabase
-                .from('kendaraan')
+                .from('transaksi')
                 .select('*')
                 .eq('id', id)
                 .single()
@@ -92,9 +92,9 @@ export class KendaraanModel {
                 }
             }
             
-            // Insert kendaraan baru
+            // Insert transaksi baru
             const { data, error } = await supabase
-                .from('kendaraan')
+                .from('transaksi')
                 .insert({
                     card_id: cardId,
                     plat_nomor: platNomor || null,
@@ -127,9 +127,9 @@ export class KendaraanModel {
                 }
             }
             
-            // Update kendaraan status jadi OUT (menunggu konfirmasi petugas)
+            // Update status jadi OUT (menunggu konfirmasi petugas)
             const { data, error } = await supabase
-                .from('kendaraan')
+                .from('transaksi')
                 .update({
                     waktu_keluar: waktuKeluar,
                     durasi_menit: durasiMenit,
@@ -151,7 +151,7 @@ export class KendaraanModel {
     static async konfirmasiKeluar(id, petugasNama) {
         try {
             const { data, error } = await supabase
-                .from('kendaraan')
+                .from('transaksi')
                 .update({
                     status: 'DONE',
                     petugas_keluar: petugasNama
@@ -167,11 +167,11 @@ export class KendaraanModel {
         }
     }
     
-    // Get statistik harian
+    // Get statistik berdasarkan rentang tanggal
     static async getStatsByDateRange(dateFrom, dateTo) {
         try {
             const { data, error } = await supabase
-                .from('kendaraan')
+                .from('transaksi')
                 .select('*')
                 .eq('status', 'DONE')
                 .gte('waktu_masuk', dateFrom)
@@ -185,11 +185,11 @@ export class KendaraanModel {
         }
     }
     
-    // Get semua kendaraan untuk chart
+    // Get semua data untuk chart
     static async getAllForChart() {
         try {
             const { data, error } = await supabase
-                .from('kendaraan')
+                .from('transaksi')
                 .select('waktu_masuk, jenis, biaya')
                 .order('waktu_masuk', { ascending: true })
             
