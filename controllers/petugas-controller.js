@@ -13,11 +13,12 @@ import {
 import { showSuccess, showError, showWarning } from '../utils/notification.js'
 
 // ===============================================
-// PETUGAS CONTROLLER - REVISED (1 RFID Toggle Mode)
+// PETUGAS CONTROLLER - FIXED (2 RFID Mode)
 // ===============================================
 // Handle business logic for dashboard petugas
-// 1 RFID dipakai untuk entry DAN exit.
-// Logic: cek status card di DB → tentukan check-in atau check-out
+// Entry RFID → HANYA Check-In
+// Exit RFID  → HANYA Check-Out
+// Sesuai soal UKK: 2 gerbang, 2 RFID reader terpisah
 
 export class PetugasController {
     constructor(profile) {
@@ -233,74 +234,62 @@ export class PetugasController {
         })
         
         // =============================================
-        // TOGGLE MODE: 1 RFID untuk Entry & Exit
-        // Semua scan masuk lewat topic entry/rfid.
-        // Logic di sini yang tentukan check-in atau check-out
-        // berdasarkan status card di database.
+        // 2 RFID MODE - SESUAI SOAL UKK
+        // Entry RFID → HANYA Check-In
+        //   - Jika kendaraan belum parkir → buka palang, LCD "Selamat Datang"
+        //   - Jika kendaraan sudah parkir → TOLAK, LCD "Sudah Parkir"
+        //
+        // Exit RFID → HANYA Check-Out
+        //   - Jika kendaraan sedang parkir → hitung biaya, LCD tampilkan biaya
+        //   - Jika kendaraan tidak parkir  → TOLAK, LCD "Tidak Parkir"
         // =============================================
         mqttController.onMessage(MQTT_CONFIG.topics.rfidEntry, async (payload) => {
-            await this.handleRFIDToggle(payload)
+            await this.handleRFIDEntry(payload)
         })
 
-        // Topic exit/rfid tetap dihandle untuk kompatibilitas
-        // saat nanti pakai 2 RFID di sekolah
         mqttController.onMessage(MQTT_CONFIG.topics.rfidExit, async (payload) => {
             await this.handleRFIDExit(payload)
         })
     }
 
     // =============================================
-    // HANDLE RFID TOGGLE (1 RFID Mode)
-    // Cek status card di DB:
-    // - Tidak ada / status DONE → Check-In
-    // - Status IN               → Check-Out
-    // - Status OUT              → Sudah checkout, tunggu petugas
+    // HANDLE RFID ENTRY → Check-In ONLY
+    // Sesuai soal UKK: gerbang Entry hanya untuk masuk.
+    // Jika kendaraan sudah parkir, TOLAK dengan pesan error.
     // =============================================
-    async handleRFIDToggle(payload) {
+    async handleRFIDEntry(payload) {
         const cardId = payload.card_id
-        console.log('📡 RFID Scan:', cardId)
-
-        // Cek status card di DB
+        
+        console.log('🏍️ RFID Entry scan:', cardId)
+        
+        // Cek apakah kendaraan ini sedang parkir
         const kendaraanResult = await KendaraanModel.getByCardId(cardId)
-
+        
         if (!kendaraanResult.success) {
             showError('Error cek kartu: ' + kendaraanResult.error)
             mqttController.publishLCD('ERROR!', 'Hubungi Petugas')
             return
         }
-
+        
         const kendaraan = kendaraanResult.data
-
-        // Tidak ada data / status DONE → proses Check-In
-        if (!kendaraan || kendaraan.status === 'DONE') {
-            console.log('→ Status: Belum parkir → Check-In')
-            await this.handleRFIDEntry(payload)
-            return
-        }
-
-        // Status IN → proses Check-Out
-        if (kendaraan.status === 'IN') {
-            console.log('→ Status: Sedang parkir → Check-Out')
-            await this.handleRFIDExit(payload)
-            return
-        }
-
-        // Status OUT → sudah checkout, menunggu petugas buka palang
-        if (kendaraan.status === 'OUT') {
-            console.log('→ Status: Menunggu petugas')
-            mqttController.publishLCD('Tunggu Petugas', 'Proses Bayar...')
-            showWarning(`⚠️ Motor ${cardId} sudah checkout. Menunggu petugas buka palang.`)
-            return
-        }
-    }
-    
-    // Handle RFID Entry → Check-In
-    async handleRFIDEntry(payload) {
-        const cardId = payload.card_id
         
-        console.log('🏍️ RFID Entry (Check-In):', cardId)
-        showSuccess(`🏍️ RFID Entry: ${cardId}`)
+        // --- TOLAK: Kendaraan sudah parkir (status IN) ---
+        if (kendaraan && kendaraan.status === 'IN') {
+            console.log('❌ Ditolak: Kendaraan sudah parkir')
+            mqttController.publishLCD('Maaf, Ditolak!', 'Sudah Parkir')
+            showWarning(`⚠️ Motor ${cardId} sudah parkir! Tidak bisa masuk lagi.`)
+            return
+        }
+
+        // --- TOLAK: Kendaraan sedang proses keluar (status OUT) ---
+        if (kendaraan && kendaraan.status === 'OUT') {
+            console.log('❌ Ditolak: Kendaraan sedang proses keluar')
+            mqttController.publishLCD('Maaf, Ditolak!', 'Proses Keluar')
+            showWarning(`⚠️ Motor ${cardId} sedang dalam proses keluar.`)
+            return
+        }
         
+        // --- PROSES: Check-In (tidak ada data atau status DONE) ---
         const result = await KendaraanModel.checkIn(
             cardId,
             null,       // plat nomor optional
@@ -309,17 +298,12 @@ export class PetugasController {
         )
         
         if (!result.success) {
-            if (result.code === 'ALREADY_PARKED') {
-                mqttController.publishLCD('DITOLAK!', 'Sudah Parkir')
-                showWarning(`⚠️ Motor ${cardId} sudah parkir!`)
-            } else {
-                mqttController.publishLCD('ERROR!', 'Hubungi Petugas')
-                showError('Error: ' + result.error)
-            }
+            mqttController.publishLCD('ERROR!', 'Hubungi Petugas')
+            showError('Error: ' + result.error)
             return
         }
         
-        // Buka palang entry & tampilkan pesan
+        // Buka palang entry & tampilkan pesan selamat datang
         mqttController.publishServo('entry', 'open')
         mqttController.publishLCD('Selamat Datang', 'Silakan Masuk')
         
@@ -327,33 +311,47 @@ export class PetugasController {
         showSuccess(`✅ Motor ${cardId} berhasil masuk!`)
     }
     
-    // Handle RFID Exit → Check-Out (status OUT, tunggu petugas)
+    // =============================================
+    // HANDLE RFID EXIT → Check-Out ONLY
+    // Sesuai soal UKK: gerbang Exit hanya untuk keluar.
+    // Jika kendaraan tidak sedang parkir, TOLAK.
+    // =============================================
     async handleRFIDExit(payload) {
         const cardId = payload.card_id
         
-        console.log('🚪 RFID Exit (Check-Out):', cardId)
-        showSuccess(`🚪 RFID Exit: ${cardId}`)
+        console.log('🚪 RFID Exit scan:', cardId)
         
-        // Get data kendaraan
+        // Cek apakah kendaraan sedang parkir
         const kendaraanResult = await KendaraanModel.getByCardId(cardId)
+
         if (!kendaraanResult.success) {
             showError('Error: ' + kendaraanResult.error)
+            mqttController.publishLCD('ERROR!', 'Hubungi Petugas')
             return
         }
-        
-        if (!kendaraanResult.data) {
-            mqttController.publishLCD('DITOLAK!', 'Tidak Parkir')
+
+        const kendaraan = kendaraanResult.data
+
+        // --- TOLAK: Kendaraan tidak sedang parkir ---
+        if (!kendaraan) {
+            console.log('❌ Ditolak: Kendaraan tidak sedang parkir')
+            mqttController.publishLCD('Maaf, Ditolak!', 'Tidak Parkir')
             showWarning(`⚠️ Motor ${cardId} tidak sedang parkir!`)
             return
         }
+
+        // --- INFO: Kendaraan sudah scan exit, menunggu petugas ---
+        if (kendaraan.status === 'OUT') {
+            console.log('ℹ️ Kendaraan sudah checkout, menunggu petugas')
+            mqttController.publishLCD('Tunggu Petugas', 'Proses Bayar...')
+            showWarning(`⚠️ Motor ${cardId} sudah checkout. Menunggu petugas buka palang.`)
+            return
+        }
         
-        const kendaraan = kendaraanResult.data
-        
-        // Hitung durasi & biaya
+        // --- PROSES: Hitung durasi & biaya, update status → OUT ---
         const durasiMenit = hitungDurasi(kendaraan.waktu_masuk)
         const biaya = hitungBiaya(durasiMenit, this.tarifData[kendaraan.jenis] || 0)
         
-        // Update status → OUT (menunggu konfirmasi petugas)
         const { data, error } = await supabase
             .from('kendaraan')
             .update({
@@ -371,8 +369,8 @@ export class PetugasController {
             return
         }
         
-        // Tampilkan biaya di LCD
-        mqttController.publishLCD(`Biaya:${formatRupiah(biaya)}`, 'Bayar ke Petugas')
+        // Tampilkan total biaya di LCD (sesuai soal UKK)
+        mqttController.publishLCD(`Total:${formatRupiah(biaya)}`, 'Bayar ke Petugas')
         
         await this.loadData()
         showSuccess(`💰 Motor ${cardId} checkout. Biaya: ${formatRupiah(biaya)}. Menunggu pembayaran...`)
