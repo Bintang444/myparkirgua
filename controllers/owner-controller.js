@@ -1,4 +1,4 @@
-import { KendaraanModel } from '../models/kendaraan-model.js'
+import { TransaksiModel } from '../models/transaksi-model.js'
 import { TarifModel } from '../models/tarif-model.js'
 import { 
     formatDurasi, 
@@ -16,7 +16,7 @@ import { showSuccess, showError } from '../utils/notification.js'
 
 // OWNER CONTROLLER
 
-// Handle business logic for dashboard owner
+// Handle business logic untuk dashboard owner
 export class OwnerController {
     constructor(profile) {
         this.profile = profile
@@ -28,14 +28,14 @@ export class OwnerController {
     async init() {
         await this.loadTarif()
         await this.loadStatsHariIni()
-        await this.loadKendaraanParkir()
+        await this.loadTransaksiParkir()
         await this.updatePendapatanChart()
         await this.setDefaultDates()
         await this.filterData()
         
-        // Auto refresh every 30 seconds
+        // Auto refresh setiap 30 detik
         setInterval(async () => {
-            await this.loadKendaraanParkir()
+            await this.loadTransaksiParkir()
             await this.loadStatsHariIni()
         }, 30000)
     }
@@ -48,9 +48,9 @@ export class OwnerController {
         }
     }
     
-    // Load statistik hari ini (Motor only)
+    // Load statistik hari ini
     async loadStatsHariIni() {
-        const result = await KendaraanModel.getStatsByDateRange(
+        const result = await TransaksiModel.getStatsByDateRange(
             getTodayISO(),
             getTodayEndISO()
         )
@@ -61,7 +61,7 @@ export class OwnerController {
         }
         
         const data = result.data
-        const totalMotor = data.length  // Semua data
+        const totalMotor = data.length
         const totalPendapatan = sumBiaya(data)
         
         // Update UI
@@ -72,9 +72,9 @@ export class OwnerController {
         if (pendapatanEl) pendapatanEl.textContent = formatRupiah(totalPendapatan)
     }
     
-    // Load kendaraan parkir (real-time)
-    async loadKendaraanParkir() {
-        const result = await KendaraanModel.getKendaraanParkir()
+    // Load transaksi yang sedang parkir (real-time)
+    async loadTransaksiParkir() {
+        const result = await TransaksiModel.getTransaksiParkir()
         if (!result.success) {
             console.error('Error loading parkir:', result.error)
             return
@@ -91,15 +91,15 @@ export class OwnerController {
             return
         }
         
-        tbody.innerHTML = parkir.map(k => {
-            const durasiMenit = hitungDurasi(k.waktu_masuk)
-            const estimasiBiaya = hitungBiaya(durasiMenit, this.tarifData[k.jenis] || 0)
+        tbody.innerHTML = parkir.map(t => {
+            const durasiMenit = hitungDurasi(t.waktu_masuk)
+            const estimasiBiaya = hitungBiaya(durasiMenit, this.tarifData['Motor'] || 0)
             
             return `
                 <tr>
-                    <td><strong>${k.card_id}</strong></td>
-                    <td>${k.plat_nomor || '-'}</td>
-                    <td>${formatTanggalWaktu(k.waktu_masuk)}</td>
+                    <td><strong>${t.card_id}</strong></td>
+                    <td>${t.plat_nomor || '-'}</td>
+                    <td>${formatTanggalWaktu(t.waktu_masuk)}</td>
                     <td>${formatDurasi(durasiMenit)}</td>
                     <td><strong>${formatRupiah(estimasiBiaya)}</strong></td>
                 </tr>
@@ -107,7 +107,7 @@ export class OwnerController {
         }).join('')
     }
     
-    // Set default dates (first day of month to today)
+    // Set default dates (awal bulan sampai hari ini)
     setDefaultDates() {
         const today = new Date()
         const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -119,7 +119,7 @@ export class OwnerController {
         if (sampaiEl) sampaiEl.valueAsDate = today
     }
     
-    // Filter data by date range
+    // Filter data berdasarkan rentang tanggal
     async filterData() {
         const tanggalDariEl = document.getElementById('tanggalDari')
         const tanggalSampaiEl = document.getElementById('tanggalSampai')
@@ -145,8 +145,7 @@ export class OwnerController {
             return
         }
         
-        // Get data
-        const result = await KendaraanModel.getStatsByDateRange(
+        const result = await TransaksiModel.getStatsByDateRange(
             dateFrom.toISOString(),
             dateTo.toISOString()
         )
@@ -158,7 +157,6 @@ export class OwnerController {
         
         this.currentData = result.data
         
-        // Update summary (Motor only - no mobil)
         const totalTransaksi = this.currentData.length
         const totalPendapatan = sumBiaya(this.currentData)
         
@@ -172,7 +170,6 @@ export class OwnerController {
         if (summaryPendapatanEl) summaryPendapatanEl.textContent = formatRupiah(totalPendapatan)
         if (summaryBoxEl) summaryBoxEl.style.display = 'block'
         
-        // Update table
         this.updateTransaksiTable()
     }
     
@@ -188,21 +185,21 @@ export class OwnerController {
             return
         }
         
-        tbody.innerHTML = this.currentData.map((k, index) => `
+        tbody.innerHTML = this.currentData.map((t, index) => `
             <tr>
                 <td>${index + 1}</td>
-                <td>${formatTanggal(k.waktu_masuk)}</td>
-                <td><strong>${k.card_id}</strong></td>
-                <td>${k.plat_nomor || '-'}</td>
-                <td>${new Date(k.waktu_masuk).toLocaleTimeString('id-ID')}</td>
-                <td>${new Date(k.waktu_keluar).toLocaleTimeString('id-ID')}</td>
-                <td>${formatDurasi(k.durasi_menit)}</td>
-                <td><strong class="text-success">${formatRupiah(k.biaya)}</strong></td>
+                <td>${formatTanggal(t.waktu_masuk)}</td>
+                <td><strong>${t.card_id}</strong></td>
+                <td>${t.plat_nomor || '-'}</td>
+                <td>${new Date(t.waktu_masuk).toLocaleTimeString('id-ID')}</td>
+                <td>${new Date(t.waktu_keluar).toLocaleTimeString('id-ID')}</td>
+                <td>${formatDurasi(t.durasi_menit)}</td>
+                <td><strong class="text-success">${formatRupiah(t.biaya)}</strong></td>
             </tr>
         `).join('')
     }
     
-    // Export to Excel
+    // Export ke Excel
     exportToExcel() {
         if (!this.currentData || this.currentData.length === 0) {
             showError('⚠️ Tidak ada data untuk di-export. Lakukan filter terlebih dahulu!')
@@ -212,35 +209,30 @@ export class OwnerController {
         const tanggalDari = document.getElementById('tanggalDari').value
         const tanggalSampai = document.getElementById('tanggalSampai').value
         
-        // Prepare data
-        const excelData = this.currentData.map((k, index) => ({
+        const excelData = this.currentData.map((t, index) => ({
             'No': index + 1,
-            'Tanggal': formatTanggal(k.waktu_masuk),
-            'Card ID': k.card_id,
-            'Plat Nomor': k.plat_nomor || '-',
-            'Jenis': 'Motor',  // Hardcode Motor
-            'Waktu Masuk': formatTanggalWaktu(k.waktu_masuk),
-            'Waktu Keluar': formatTanggalWaktu(k.waktu_keluar),
-            'Durasi (menit)': k.durasi_menit,
-            'Biaya': k.biaya,
-            'Petugas Masuk': k.petugas_masuk || '-',
-            'Petugas Keluar': k.petugas_keluar || '-'
+            'Tanggal': formatTanggal(t.waktu_masuk),
+            'Card ID': t.card_id,
+            'Plat Nomor': t.plat_nomor || '-',
+            'Jenis': 'Motor',
+            'Waktu Masuk': formatTanggalWaktu(t.waktu_masuk),
+            'Waktu Keluar': formatTanggalWaktu(t.waktu_keluar),
+            'Durasi (menit)': t.durasi_menit,
+            'Biaya': t.biaya,
+            'Petugas Masuk': t.petugas_masuk || '-',
+            'Petugas Keluar': t.petugas_keluar || '-'
         }))
         
-        // Add summary
         const totalPendapatan = sumBiaya(this.currentData)
         
         excelData.push({})
         excelData.push({ 'No': 'RINGKASAN' })
         excelData.push({ 'No': 'Total Transaksi', 'Tanggal': this.currentData.length })
-        excelData.push({ 'No': 'Total Motor', 'Tanggal': this.currentData.length })
         excelData.push({ 'No': 'Total Pendapatan', 'Tanggal': totalPendapatan })
         
-        // Create workbook
         const wb = XLSX.utils.book_new()
         const ws = XLSX.utils.json_to_sheet(excelData)
         
-        // Set column widths
         ws['!cols'] = [
             { wch: 5 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 10 },
             { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
@@ -248,20 +240,18 @@ export class OwnerController {
         
         XLSX.utils.book_append_sheet(wb, ws, 'Rekap Parkir Motor')
         
-        // Download
         const filename = `Rekap_Parkir_Motor_${tanggalDari}_to_${tanggalSampai}.xlsx`
         XLSX.writeFile(wb, filename)
         
         showSuccess(`File ${filename} berhasil di-download!`)
     }
     
-    // Update chart pendapatan
+    // Update chart pendapatan 7 hari terakhir
     async updatePendapatanChart() {
-        // Get data 7 hari terakhir
         const today = new Date()
         const last7Days = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
         
-        const result = await KendaraanModel.getStatsByDateRange(
+        const result = await TransaksiModel.getStatsByDateRange(
             last7Days.toISOString(),
             today.toISOString()
         )
@@ -276,6 +266,6 @@ export class OwnerController {
             window.pendapatanChart.data.labels = labels
             window.pendapatanChart.data.datasets[0].data = values
             window.pendapatanChart.update()
-        } 
+        }
     }
 }
