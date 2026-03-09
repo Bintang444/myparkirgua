@@ -14,7 +14,7 @@ export function formatDurasi(menit) {
 }
 
 // Hitung durasi parkir dalam menit
-export function hitungDurasi(waktuMasuk, waktuKeluar = new Date()) { 
+export function hitungDurasi(waktuMasuk, waktuKeluar = new Date()) {
     const masuk = new Date(waktuMasuk)
     const keluar = new Date(waktuKeluar)
     return Math.floor((keluar - masuk) / 1000 / 60)
@@ -22,7 +22,7 @@ export function hitungDurasi(waktuMasuk, waktuKeluar = new Date()) {
 
 // Hitung biaya parkir (durasi dibulatkan ke atas per jam)
 export function hitungBiaya(durasiMenit, tarifPerJam) {
-    const durasiJam = Math.ceil(durasiMenit / 60) // Bulatkan ke atas
+    const durasiJam = Math.ceil(durasiMenit / 60)
     return durasiJam * tarifPerJam
 }
 
@@ -60,15 +60,6 @@ export function validateCardId(cardId) {
     return { valid: true }
 }
 
-// Validasi jenis kendaraan
-export function validateJenis(jenis) {
-    const validJenis = ['Motor', 'Mobil']
-    if (!validJenis.includes(jenis)) {
-        return { valid: false, error: 'Jenis kendaraan tidak valid!' }
-    }
-    return { valid: true }
-}
-
 // Get tanggal hari ini (ISO format untuk database)
 export function getTodayISO() {
     const today = new Date()
@@ -98,20 +89,14 @@ export function groupByTanggal(data, keyField = 'waktu_masuk') {
     return grouped
 }
 
-// Count by jenis
-export function countByJenis(data) {
-    const counts = {
-        Motor: 0,
-        Mobil: 0
-    }
-    
-    data.forEach(item => {
-        if (counts[item.jenis] !== undefined) {
-            counts[item.jenis]++
-        }
+// Hitung total transaksi per tanggal
+export function countByTanggal(data) {
+    const grouped = groupByTanggal(data)
+    const result = {}
+    Object.keys(grouped).forEach(tanggal => {
+        result[tanggal] = grouped[tanggal].length
     })
-    
-    return counts
+    return result
 }
 
 // Sum biaya
