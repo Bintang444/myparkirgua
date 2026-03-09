@@ -1,12 +1,12 @@
 import { supabase } from '../config/supabase.js'
 
-// KENDARAAN MODEL
+// TRANSAKSI MODEL
 
-// Handle semua operasi CRUD kendaraan
-export class KendaraanModel {
+// Handle semua operasi CRUD transaksi parkir motor
+export class TransaksiModel {
     
-    // Get kendaraan yang sedang parkir (status IN)
-    static async getKendaraanParkir() {
+    // Get transaksi yang sedang parkir (status IN)
+    static async getTransaksiParkir() {
         try {
             const { data, error } = await supabase
                 .from('transaksi')
@@ -21,8 +21,8 @@ export class KendaraanModel {
         }
     }
     
-    // Get kendaraan yang sudah keluar (status DONE)
-    static async getKendaraanSelesai(limit = 10) {
+    // Get transaksi yang sudah selesai (status DONE)
+    static async getTransaksiSelesai(limit = 10) {
         try {
             const { data, error } = await supabase
                 .from('transaksi')
@@ -38,7 +38,7 @@ export class KendaraanModel {
         }
     }
     
-    // Get kendaraan by card_id (cek status IN)
+    // Get transaksi by card_id (yang sedang parkir)
     static async getByCardId(cardId) {
         try {
             const { data, error } = await supabase
@@ -46,7 +46,7 @@ export class KendaraanModel {
                 .select('*')
                 .eq('card_id', cardId)
                 .eq('status', 'IN')
-                .single()
+                .maybeSingle()
             
             if (error) {
                 // Jika tidak ditemukan, return null (bukan error)
@@ -77,8 +77,8 @@ export class KendaraanModel {
         }
     }
     
-    // Check in kendaraan (masuk parkir)
-    static async checkIn(cardId, platNomor, jenis, petugasNama) {
+    // Check in motor (masuk parkir)
+    static async checkIn(cardId, platNomor, petugasNama) {
         try {
             // Cek dulu apakah card_id sedang parkir
             const existing = await this.getByCardId(cardId)
@@ -87,7 +87,7 @@ export class KendaraanModel {
             if (existing.data) {
                 return { 
                     success: false, 
-                    error: 'Kendaraan dengan card ID ini sedang parkir!',
+                    error: 'Motor dengan card ID ini sedang parkir!',
                     code: 'ALREADY_PARKED'
                 }
             }
@@ -98,7 +98,7 @@ export class KendaraanModel {
                 .insert({
                     card_id: cardId,
                     plat_nomor: platNomor || null,
-                    jenis: jenis,
+                    jenis: 'Motor',
                     status: 'IN',
                     petugas_masuk: petugasNama
                 })
@@ -112,7 +112,7 @@ export class KendaraanModel {
         }
     }
     
-    // Check out kendaraan (keluar parkir) - update status jadi OUT
+    // Check out motor (keluar parkir) - update status jadi OUT
     static async checkOut(cardId, waktuKeluar, durasiMenit, biaya) {
         try {
             // Cek dulu apakah card_id sedang parkir
@@ -122,7 +122,7 @@ export class KendaraanModel {
             if (!existing.data) {
                 return { 
                     success: false, 
-                    error: 'Kendaraan dengan card ID ini tidak sedang parkir!',
+                    error: 'Motor dengan card ID ini tidak sedang parkir!',
                     code: 'NOT_PARKED'
                 }
             }
@@ -185,12 +185,12 @@ export class KendaraanModel {
         }
     }
     
-    // Get semua data untuk chart
+    // Get semua transaksi untuk chart
     static async getAllForChart() {
         try {
             const { data, error } = await supabase
                 .from('transaksi')
-                .select('waktu_masuk, jenis, biaya')
+                .select('waktu_masuk, biaya')
                 .order('waktu_masuk', { ascending: true })
             
             if (error) throw error
