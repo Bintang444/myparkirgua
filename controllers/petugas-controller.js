@@ -141,7 +141,7 @@ export class PetugasController {
                     <td><strong class="text-success" style="font-size: 1.1em;">${formatRupiah(t.biaya)}</strong></td>
                     <td>
                         <button class="btn-primary" onclick="bukaPalang('${t.id}')">
-                            🚪 Buka Palang
+                            Buka Palang
                         </button>
                     </td>
                 </tr>
@@ -242,7 +242,7 @@ export class PetugasController {
     
     // Handle RFID Entry → Check-In
     async handleRFIDEntry(payload) {
-        const cardId = payload.card_id
+        const cardId = payload.rfid
         
         console.log('🏍️ RFID Entry (Check-In):', cardId)
         showSuccess(`🏍️ RFID Entry: ${cardId}`)
@@ -273,7 +273,7 @@ export class PetugasController {
     
     // Handle RFID Exit → Check-Out (status OUT, tunggu petugas)
     async handleRFIDExit(payload) {
-        const cardId = payload.card_id
+        const cardId = payload.rfid
         
         console.log('🚪 RFID Exit (Check-Out):', cardId)
         showSuccess(`🚪 RFID Exit: ${cardId}`)
