@@ -1,5 +1,4 @@
 import { TransaksiModel } from '../models/transaksi-model.js'
-import { TarifModel } from '../models/tarif-model.js'
 import { mqttController } from './mqtt-controller.js'
 import { MQTT_CONFIG } from '../config/mqtt-config.js'
 import { supabase } from '../config/supabase.js'
@@ -12,57 +11,41 @@ import {
 } from '../utils/helpers.js'
 import { showSuccess, showError, showWarning } from '../utils/notification.js'
 
-// PETUGAS CONTROLLER
+const tarif = 2000
 
+// PETUGAS CONTROLLER
 // Handle business logic untuk dashboard petugas
-// 2 RFID reader: entry khusus check-in, exit khusus check-out
 
 export class PetugasController {
     constructor(profile) {
         this.profile = profile
-        this.tarifData = {}
     }
     
     // Initialize
     async init() {
-        await this.loadTarif()
         await this.loadData()
         this.initMQTT()
         
         // Auto refresh setiap 10 detik
         setInterval(() => this.loadData(), 10000)
     }
-    
-    // Load tarif
-    async loadTarif() {
-        const result = await TarifModel.getTarifMap()
-        if (result.success) {
-            this.tarifData = result.tarifMap
-            this.updateTarifUI()
-        }
-    }
-    
-    // Update tarif UI
-    updateTarifUI() {
-        const tarifMotor = document.getElementById('tarifMotor')
-        if (tarifMotor) tarifMotor.textContent = formatRupiah(this.tarifData['Motor']) + '/jam'
-    }
-    
-    // Load semua data
+
     async loadData() {
-        await this.loadCheckIn()
-        await this.loadCheckOut()
-        await this.loadRiwayat()
-        await this.updateCharts()
+        await Promise.all([
+            this.loadCheckIn(),
+            this.loadCheckOut(),
+            this.loadRiwayat(),
+            this.updateCharts()
+        ])
     }
-    
+
     // Load TABEL 1: Check-In (status IN)
     async loadCheckIn() {
         const { data, error } = await supabase
             .from('transaksi')
             .select('*')
             .eq('status', 'IN')
-            .order('waktu_masuk', { ascending: false })
+            .order('checkin_time', { ascending: false })
         
         if (error) {
             console.error('Error loading check-in:', error)
@@ -85,15 +68,14 @@ export class PetugasController {
         }
         
         tbody.innerHTML = checkIn.map((t, index) => {
-            const durasiMenit = hitungDurasi(t.waktu_masuk)
-            const estimasiBiaya = hitungBiaya(durasiMenit, this.tarifData['Motor'] || 0)
+            const durasiMenit = hitungDurasi(t.checkin_time)
+            const estimasiBiaya = hitungBiaya(durasiMenit, tarif)
             
             return `
                 <tr>
                     <td>${index + 1}</td>
                     <td><strong>${t.card_id}</strong></td>
-                    <td>${t.plat_nomor || '-'}</td>
-                    <td>${new Date(t.waktu_masuk).toLocaleString('id-ID')}</td>
+                    <td>${new Date(t.checkin_time).toLocaleString('id-ID')}</td>
                     <td>${formatDurasi(durasiMenit)}</td>
                     <td><strong>${formatRupiah(estimasiBiaya)}</strong></td>
                 </tr>
@@ -107,7 +89,7 @@ export class PetugasController {
             .from('transaksi')
             .select('*')
             .eq('status', 'OUT')
-            .order('waktu_keluar', { ascending: false })
+            .order('checkout_time', { ascending: false })
         
         if (error) {
             console.error('Error loading check-out:', error)
@@ -124,7 +106,7 @@ export class PetugasController {
         
         if (checkOut.length === 0) {
             tbody.innerHTML = `
-                <tr><td colspan="8" class="text-center muted">Belum ada motor checkout</td></tr>
+                <tr><td colspan="9" class="text-center muted">Belum ada motor checkout</td></tr>
             `
             return
         }
@@ -134,13 +116,15 @@ export class PetugasController {
                 <tr class="highlight-row">
                     <td>${index + 1}</td>
                     <td><strong>${t.card_id}</strong></td>
-                    <td>${t.plat_nomor || '-'}</td>
-                    <td>${new Date(t.waktu_masuk).toLocaleString('id-ID')}</td>
-                    <td>${new Date(t.waktu_keluar).toLocaleString('id-ID')}</td>
-                    <td>${formatDurasi(t.durasi_menit)}</td>
-                    <td><strong class="text-success" style="font-size: 1.1em;">${formatRupiah(t.biaya)}</strong></td>
+                    <td>${new Date(t.checkin_time).toLocaleString('id-ID')}</td>
+                    <td>${new Date(t.checkout_time).toLocaleString('id-ID')}</td>
+                    <td>${formatDurasi(t.duration)}</td>
+                    <td><strong class="text-success" style="font-size: 1.1em;">${formatRupiah(t.fee)}</strong></td>
                     <td>
-                        <button class="btn-primary" onclick="bukaPalang('${t.id}')">
+                        <button class="btn-secondary btn-sm" onclick="cetakStruk('${t.id}')">
+                            Cetak Struk
+                        </button>
+                        <button class="btn-primary btn-sm" onclick="bukaPalang('${t.id}')">
                             Buka Palang
                         </button>
                     </td>
@@ -172,16 +156,106 @@ export class PetugasController {
             <tr>
                 <td>${index + 1}</td>
                 <td><strong>${t.card_id}</strong></td>
-                <td>${t.plat_nomor || '-'}</td>
-                <td>${new Date(t.waktu_masuk).toLocaleString('id-ID')}</td>
-                <td>${new Date(t.waktu_keluar).toLocaleString('id-ID')}</td>
-                <td>${formatDurasi(t.durasi_menit)}</td>
-                <td><strong class="text-success">${formatRupiah(t.biaya)}</strong></td>
+                <td>${new Date(t.checkin_time).toLocaleString('id-ID')}</td>
+                <td>${new Date(t.checkout_time).toLocaleString('id-ID')}</td>
+                <td>${formatDurasi(t.duration)}</td>
+                <td><strong class="text-success">${formatRupiah(t.fee)}</strong></td>
             </tr>
         `).join('')
     }
-    
-    // Handle "Buka Palang" button (Update status OUT → DONE)
+
+    // CETAK STRUK
+    async handleCetakStruk(transaksiId) {
+        if (!transaksiId) return
+
+        // Ambil data transaksi
+        const result = await TransaksiModel.getById(transaksiId)
+        if (!result.success) {
+            showError('Gagal mengambil data transaksi: ' + result.error)
+            return
+        }
+
+        const t = result.data
+        const waktuMasuk  = new Date(t.checkin_time).toLocaleString('id-ID')
+        const waktuKeluar = new Date(t.checkout_time).toLocaleString('id-ID')
+        const sekarang    = new Date().toLocaleString('id-ID')
+
+        // Buka window baru khusus untuk print
+        const struk = window.open('', '_blank', 'width=400,height=600')
+        struk.document.write(`
+            <!DOCTYPE html>
+            <html lang="id">
+            <head>
+                <meta charset="UTF-8">
+                <title>Struk Parkir</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body {
+                        font-family: 'Courier New', monospace;
+                        font-size: 13px;
+                        padding: 20px;
+                        width: 300px;
+                        color: #000;
+                    }
+                    .center { text-align: center; }
+                    .bold   { font-weight: bold; }
+                    .big    { font-size: 16px; }
+                    .divider { border-top: 1px dashed #000; margin: 8px 0; }
+                    .row    { display: flex; justify-content: space-between; margin: 4px 0; }
+                    .total  { font-size: 15px; font-weight: bold; }
+                    .footer { margin-top: 12px; text-align: center; font-size: 11px; }
+                    @media print {
+                        body { padding: 0; }
+                        .no-print { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="center bold big">SMART PARKING</div>
+                <div class="center">Struk Parkir Kendaraan</div>
+                <div class="divider"></div>
+
+                <div class="row"><span>No. Transaksi</span><span>#${t.id}</span></div>
+                <div class="row"><span>Card ID</span><span>${t.card_id}</span></div>
+                <div class="row"><span>Jenis</span><span>Motor</span></div>
+
+                <div class="divider"></div>
+
+                <div class="row"><span>Waktu Masuk</span><span>${waktuMasuk}</span></div>
+                <div class="row"><span>Waktu Keluar</span><span>${waktuKeluar}</span></div>
+                <div class="row"><span>Durasi</span><span>${formatDurasi(t.duration)}</span></div>
+
+                <div class="divider"></div>
+
+                <div class="row total"><span>TOTAL BIAYA</span><span>${formatRupiah(t.fee)}</span></div>
+
+                <div class="divider"></div>
+
+                <div class="row"><span>Dicetak</span><span>${sekarang}</span></div>
+
+                <div class="footer">
+                    Terima kasih telah menggunakan<br>
+                    layanan parkir kami!
+                </div>
+
+                <br>
+                <div class="center no-print">
+                    <button onclick="window.print()" style="padding:8px 20px;cursor:pointer;">
+                        Print
+                    </button>
+                </div>
+
+                <script>
+                    // Auto print saat window terbuka
+                    window.onload = () => window.print()
+                <\/script>
+            </body>
+            </html>
+        `)
+        struk.document.close()
+    }
+
+    // BUKA PALANG (konfirmasi petugas → update status DONE)
     async handleBukaPalang(transaksiId) {
         if (!transaksiId) return
         
@@ -206,7 +280,7 @@ export class PetugasController {
         // MQTT: LCD terima kasih
         mqttController.publishLCD('Terima Kasih', 'Selamat Jalan')
         
-        showSuccess(`✅ Palang dibuka! Motor ${data.card_id} keluar. Biaya: ${formatRupiah(data.biaya)}`)
+        showSuccess(`Palang dibuka! Motor ${data.card_id} keluar. Biaya: ${formatRupiah(data.fee)}`)
         
         await this.loadData()
     }
@@ -244,12 +318,12 @@ export class PetugasController {
     async handleRFIDEntry(payload) {
         const cardId = payload.rfid
         
-        console.log('🏍️ RFID Entry (Check-In):', cardId)
-        showSuccess(`🏍️ RFID Entry: ${cardId}`)
-        
+        console.log('RFID Entry (Check-In):', cardId)
+        showSuccess(`RFID Entry: ${cardId}`)
+
         const result = await TransaksiModel.checkIn(
             cardId,
-            null,       // plat nomor optional
+            null,
             this.profile.nama
         )
         
@@ -263,20 +337,20 @@ export class PetugasController {
             }
             return
         }
-        
+
         mqttController.publishServo('entry', 'open')
         mqttController.publishLCD('Selamat Datang', 'Silakan Masuk')
         
         await this.loadData()
-        showSuccess(`✅ Motor ${cardId} berhasil masuk!`)
+        showSuccess(`Motor ${cardId} berhasil masuk!`)
     }
     
     // Handle RFID Exit → Check-Out (status OUT, tunggu petugas)
     async handleRFIDExit(payload) {
         const cardId = payload.rfid
         
-        console.log('🚪 RFID Exit (Check-Out):', cardId)
-        showSuccess(`🚪 RFID Exit: ${cardId}`)
+        console.log('RFID Exit (Check-Out):', cardId)
+        showSuccess(`RFID Exit: ${cardId}`)
         
         const transaksiResult = await TransaksiModel.getByCardId(cardId)
         if (!transaksiResult.success) {
@@ -292,15 +366,15 @@ export class PetugasController {
         
         const transaksi = transaksiResult.data
         
-        const durasiMenit = hitungDurasi(transaksi.waktu_masuk)
-        const biaya = hitungBiaya(durasiMenit, this.tarifData['Motor'] || 0)
+        const durasiMenit = hitungDurasi(transaksi.checkin_time)
+        const biaya = hitungBiaya(durasiMenit, tarif)
         
         const { data, error } = await supabase
             .from('transaksi')
             .update({
-                waktu_keluar: new Date().toISOString(),
-                durasi_menit: durasiMenit,
-                biaya: biaya,
+                checkout_time: new Date().toISOString(),
+                duration: durasiMenit,
+                fee: biaya,
                 status: 'OUT'
             })
             .eq('id', transaksi.id)
@@ -315,7 +389,7 @@ export class PetugasController {
         mqttController.publishLCD(`Biaya:${formatRupiah(biaya)}`, 'Bayar ke Petugas')
         
         await this.loadData()
-        showSuccess(`💰 Motor ${cardId} checkout. Biaya: ${formatRupiah(biaya)}. Menunggu pembayaran...`)
+        showSuccess(`Motor ${cardId} checkout. Biaya: ${formatRupiah(biaya)}. Menunggu pembayaran...`)
     }
     
     // Update charts

@@ -2,7 +2,6 @@ import { AuthModel } from '../models/auth-model.js'
 import { showError } from '../utils/notification.js'
 
 // AUTH CONTROLLER
-
 // Handle authentication logic
 export class AuthController {
     
@@ -48,7 +47,7 @@ export class AuthController {
         return result
     }
     
-    // Check authentication & redirect if needed
+    // Check authentication & redirect
     static async checkAuth(requiredRole = null) {
         // Get current user
         const userResult = await AuthModel.getCurrentUser()
@@ -64,11 +63,14 @@ export class AuthController {
             return { success: false, error: 'Profile not found' }
         }
         
-        // Check role if specified
-        if (requiredRole && profileResult.profile.role !== requiredRole) {
-            showError('Akses ditolak! Anda tidak memiliki izin untuk halaman ini.')
-            window.location.href = '/views/login.html'
-            return { success: false, error: 'Access denied' }
+        // Check role
+        if (requiredRole) {
+            const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole]
+            if (!allowedRoles.includes(profileResult.profile.role)) {
+                showError('Akses ditolak! Anda tidak memiliki izin untuk halaman ini.')
+                window.location.href = '/views/login.html'
+                return { success: false, error: 'Access denied' }
+            }
         }
         
         return { 

@@ -2,7 +2,6 @@ import { MQTT_CONFIG } from '../config/mqtt-config.js'
 import { showSuccess, showError, showInfo } from '../utils/notification.js'
 
 // MQTT CONTROLLER
-
 // Handle MQTT communication
 export class MQTTController {
     constructor() {
@@ -13,16 +12,12 @@ export class MQTTController {
 
     // Initialize MQTT connection
     init() {
-        // Gunakan WSS (WebSocket Secure / TLS) bukan WS biasa
         const wsUrl = `ws://${MQTT_CONFIG.broker}:${MQTT_CONFIG.port}/mqtt`
 
         console.log('Connecting to MQTT broker (secure):', wsUrl)
 
         this.client = mqtt.connect(wsUrl, {
             clientId: MQTT_CONFIG.clientId,
-            // username: MQTT_CONFIG.username,
-            // password: MQTT_CONFIG.password,
-            ...MQTT_CONFIG.options
         })
 
         this.setupEventHandlers()
