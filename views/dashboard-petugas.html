@@ -17,12 +17,12 @@
                 <div class="muted small">Monitoring & Kontrol Sistem Parkir IoT</div>
             </div>
             <div class="meta">
-                <span class="user-badge">👤 <span id="userName">Petugas</span></span>
+                <span class="user-badge"><span id="userName">Petugas</span></span>
                 <button class="logout-btn" onclick="handleLogout()">Logout</button>
             </div>
         </header>
 
-        <!-- SECTION: TARIF INFO --> 
+        <!-- SECTION: INFO TARIF -->
         <section class="card info-card">
             <div class="info-grid">
                 <div class="info-item">
@@ -42,7 +42,7 @@
 
         <!-- SECTION: MQTT STATUS -->
         <section class="card">
-            <h2>📡 Status Koneksi MQTT</h2>
+            <h2>Status Koneksi MQTT</h2>
             <div class="mqtt-status">
                 <div class="status-indicator" id="mqttStatus">
                     <span class="status-dot offline"></span>
@@ -51,9 +51,9 @@
             </div>
         </section>
 
-        <!-- SECTION: TABEL 1 - CHECK-IN (Status IN) -->
+        <!-- SECTION: TABEL 1 - CHECK-IN -->
         <section class="card">
-            <h2>🅿️ Motor Check-In (Sedang Parkir)</h2>
+            <h2>Motor Check-In (Sedang Parkir)</h2>
             <div class="table-info muted">
                 Motor yang sudah scan RFID Entry dan sedang parkir
             </div>
@@ -63,26 +63,25 @@
                         <tr>
                             <th>No</th>
                             <th>Card ID</th>
-                            <th>Plat Nomor</th>
-                            <th>Waktu Masuk</th>
+                            <th>Check-in</th>
                             <th>Durasi</th>
                             <th>Estimasi Biaya</th>
                         </tr>
                     </thead>
                     <tbody id="checkin-body">
                         <tr>
-                            <td colspan="6" class="text-center muted">Belum ada motor parkir</td>
+                            <td colspan="5" class="text-center muted">Belum ada motor parkir</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </section>
 
-        <!-- SECTION: TABEL 2 - CHECK-OUT (Status OUT) -->
+        <!-- SECTION: TABEL 2 - CHECK-OUT -->
         <section class="card">
-            <h2>🚪 Motor Check-Out (Menunggu Pembayaran)</h2>
+            <h2>Motor Check-Out (Menunggu Pembayaran)</h2>
             <div class="table-info muted">
-                Motor yang sudah scan RFID Exit, menunggu pembayaran dan konfirmasi petugas
+                Motor yang sudah scan RFID Exit — cetak struk lalu buka palang setelah bayar
             </div>
             <div class="table-responsive">
                 <table>
@@ -90,17 +89,16 @@
                         <tr>
                             <th>No</th>
                             <th>Card ID</th>
-                            <th>Plat Nomor</th>
-                            <th>Waktu Masuk</th>
-                            <th>Waktu Keluar</th>
+                            <th>Check-in</th>
+                            <th>Check-out</th>
                             <th>Durasi</th>
-                            <th>BIAYA</th>
+                            <th>Biaya</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody id="checkout-body">
                         <tr>
-                            <td colspan="8" class="text-center muted">Belum ada motor checkout</td>
+                            <td colspan="7" class="text-center muted">Belum ada motor checkout</td>
                         </tr>
                     </tbody>
                 </table>
@@ -109,15 +107,15 @@
 
         <!-- SECTION: STATISTIK -->
         <section class="card">
-            <h2>📊 Statistik Parkir</h2>
+            <h2>Statistik Parkir</h2>
             <div class="chart-box-full">
                 <canvas id="harianChart"></canvas>
             </div>
         </section>
 
-        <!-- SECTION: TABEL 3 - RIWAYAT (Status DONE) -->
+        <!-- SECTION: TABEL 3 - RIWAYAT -->
         <section class="card">
-            <h2>📋 Riwayat Transaksi Selesai (10 Terakhir)</h2>
+            <h2>Riwayat Transaksi Selesai (10 Terakhir)</h2>
             <div class="table-info muted">
                 Motor yang sudah selesai transaksi dan keluar dari area parkir
             </div>
@@ -127,9 +125,8 @@
                         <tr>
                             <th>No</th>
                             <th>Card ID</th>
-                            <th>Plat Nomor</th>
-                            <th>Waktu Masuk</th>
-                            <th>Waktu Keluar</th>
+                            <th>Check-in</th>
+                            <th>Check-out</th>
                             <th>Durasi</th>
                             <th>Biaya</th>
                         </tr>
@@ -144,33 +141,21 @@
         </section>
     </div>
 
-    <!-- CHART.JS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <!-- MQTT.JS -->
     <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
 
-    <!-- MAIN SCRIPT -->
     <script type="module">
         import { AuthController } from '../controllers/auth-controller.js'
         import { PetugasController } from '../controllers/petugas-controller.js'
 
-        // Check auth & get profile
         const authResult = await AuthController.checkAuth('petugas')
-        if (!authResult.success) {
-            throw new Error('Not authenticated')
-        }
+        if (!authResult.success) throw new Error('Not authenticated')
 
-        // Set nama user
         document.getElementById('userName').textContent = authResult.profile.nama
 
-        // Initialize controller
         window.petugasController = new PetugasController(authResult.profile)
 
-        // Initialize chart
-        const harianCtx = document.getElementById('harianChart')
-
-        window.harianChart = new Chart(harianCtx, {
+        window.harianChart = new Chart(document.getElementById('harianChart'), {
             type: 'bar',
             data: {
                 labels: [],
@@ -188,18 +173,18 @@
                     legend: { display: false },
                     title: { display: true, text: 'Motor Masuk 7 Hari Terakhir' }
                 },
-                scales: {
-                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
-                }
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
             }
         })
 
-        // Init controller
         await petugasController.init()
 
-        // Global function for "Buka Palang" button
-        window.bukaPalang = async (kendaraanId) => {
-            await petugasController.handleBukaPalang(kendaraanId)
+        window.cetakStruk = async (transaksiId) => {
+            await petugasController.handleCetakStruk(transaksiId)
+        }
+
+        window.bukaPalang = async (transaksiId) => {
+            await petugasController.handleBukaPalang(transaksiId)
         }
 
         window.handleLogout = async () => {

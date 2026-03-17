@@ -16,25 +16,24 @@
                 <div class="muted small">Monitoring & Rekap Sistem Parkir Motor</div>
             </div>
             <div class="meta">
-                <span class="user-badge">👤 <span id="userName">Owner</span></span>
+                <span class="user-badge"><span id="userName">Owner</span></span>
                 <button class="logout-btn" onclick="handleLogout()">Logout</button>
             </div>
         </header>
 
         <!-- SECTION: STATISTIK RINGKASAN -->
         <section class="card">
-            <h2>📊 Ringkasan Hari Ini</h2>
+            <h2>Ringkasan Hari Ini</h2>
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-icon">🏍️</div>
+                    <div class="stat-icon"></div>
                     <div class="stat-content">
                         <div class="stat-label">Total Motor</div>
                         <div class="stat-value" id="totalHariIni">0</div>
                     </div>
                 </div>
-                <!-- Stat Mobil dihapus - Motor only -->
                 <div class="stat-card primary">
-                    <div class="stat-icon">💰</div>
+                    <div class="stat-icon"></div>
                     <div class="stat-content">
                         <div class="stat-label">Pendapatan</div>
                         <div class="stat-value" id="pendapatanHariIni">Rp 0</div>
@@ -42,6 +41,14 @@
                 </div>
             </div>
         </section>
+
+        <!-- SECTION: TARIF PARKIR -->
+        <section class="card">
+            <h2>Tarif Parkir Motor</h2>
+            <div class="table-info muted">Tarif default per jam: Rp 2.000</div>
+            <div class="info-value" id="tarifMotor">Rp 2.000/jam</div>
+        </section>
+
 
         <!-- SECTION: FILTER & EXPORT -->
         <section class="card">
@@ -60,8 +67,6 @@
                     <button onclick="exportData()" class="btn-success">Export Excel</button>
                 </div>
             </div>
-
-            <!-- Ringkasan Periode -->
             <div class="summary-box" id="summaryBox" style="display:none;">
                 <h3>Ringkasan Periode: <span id="periodeText"></span></h3>
                 <div class="summary-grid">
@@ -69,7 +74,6 @@
                         <strong>Total Transaksi:</strong>
                         <span id="summaryTotal">0</span>
                     </div>
-                    <!-- Summary Mobil dihapus - Motor only -->
                     <div>
                         <strong>Total Pendapatan:</strong>
                         <span class="text-success" id="summaryPendapatan">Rp 0</span>
@@ -93,15 +97,7 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>No</th>
-                            <th>Tanggal</th>
-                            <th>Card ID</th>
-                            <th>Plat Nomor</th>
-                            <!-- Kolom Jenis dihapus -->
-                            <th>Waktu Masuk</th>
-                            <th>Waktu Keluar</th>
-                            <th>Durasi</th>
-                            <th>Biaya</th>
+                            <th>No</th><th>Tanggal</th><th>Card ID</th><th>Checkin</th><th>Checkout</th><th>Durasi</th><th>Biaya</th>
                         </tr>
                     </thead>
                     <tbody id="transaksi-body">
@@ -111,19 +107,15 @@
             </div>
         </section>
 
-        <!-- SECTION: MOTOR SEDANG PARKIR (READ-ONLY) -->
+        <!-- SECTION: MOTOR SEDANG PARKIR -->
         <section class="card">
-            <h2>🅿️ Motor Sedang Parkir (Real-time)</h2>
+            <h2>Motor Sedang Parkir (Real-time)</h2>
             <div class="table-responsive">
                 <table>
                     <thead>
                         <tr>
-                            <th>Card ID</th>
-                            <th>Plat Nomor</th>
-                            <!-- Kolom Jenis dihapus -->
-                            <th>Waktu Masuk</th>
-                            <th>Durasi</th>
-                            <th>Estimasi Biaya</th>
+                            <th>Card ID</th><th>Plat Nomor</th>
+                            <th>Waktu Masuk</th><th>Durasi</th><th>Estimasi Biaya</th>
                         </tr>
                     </thead>
                     <tbody id="parkir-body">
@@ -134,33 +126,21 @@
         </section>
     </div>
 
-    <!-- CHART.JS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- XLSX.JS for Excel Export -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
-    <!-- MAIN SCRIPT -->
     <script type="module">
         import { AuthController } from '../controllers/auth-controller.js'
         import { OwnerController } from '../controllers/owner-controller.js'
         
-        // Check auth & get profile
         const authResult = await AuthController.checkAuth('owner')
-        if (!authResult.success) {
-            throw new Error('Not authenticated')
-        }
+        if (!authResult.success) throw new Error('Not authenticated')
         
-        // Set nama user
         document.getElementById('userName').textContent = authResult.profile.nama
         
-        // Initialize controller
         window.ownerController = new OwnerController(authResult.profile)
         
-        // Initialize chart
-        const pendapatanCtx = document.getElementById('pendapatanChart')
-        
-        window.pendapatanChart = new Chart(pendapatanCtx, {
+        window.pendapatanChart = new Chart(document.getElementById('pendapatanChart'), {
             type: 'line',
             data: {
                 labels: [],
@@ -169,14 +149,11 @@
                     data: [],
                     borderColor: '#0ea5a4',
                     backgroundColor: 'rgba(14, 165, 164, 0.1)',
-                    fill: true,
-                    tension: 0.4,
-                    borderWidth: 3
+                    fill: true, tension: 0.4, borderWidth: 3
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 plugins: {
                     legend: { display: true, position: 'top' },
                     title: { display: true, text: 'Trend Pendapatan 7 Hari Terakhir' }
@@ -184,28 +161,18 @@
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return 'Rp ' + value.toLocaleString('id-ID')
-                            }
-                        }
+                        ticks: { callback: v => 'Rp ' + v.toLocaleString('id-ID') }
                     }
                 }
             }
         })
         
-        // Init controller
         await ownerController.init()
-        
-        // Global functions
-        window.filterData = async () => {
-            await ownerController.filterData()
-        }
-        
-        window.exportData = () => {
-            ownerController.exportToExcel()
-        }
-        
+        await ownerController.loadTarifTable()
+
+        // === LAINNYA ===
+        window.filterData  = async () => await ownerController.filterData()
+        window.exportData  = ()       => ownerController.exportToExcel()
         window.handleLogout = async () => {
             if (confirm('Yakin ingin logout?')) {
                 await AuthController.handleLogout()
@@ -214,4 +181,4 @@
         }
     </script>
 </body>
-</html> 
+</html>
