@@ -1,8 +1,7 @@
 import { supabase } from '../config/supabase.js'
 
 // TRANSAKSI MODEL
-
-// Handle semua operasi CRUD transaksi parkir motor
+// Handle semua CRUD transaksi parkir motor
 export class TransaksiModel {
     
     // Get transaksi yang sedang parkir (status IN)
@@ -12,7 +11,7 @@ export class TransaksiModel {
                 .from('transaksi')
                 .select('*')
                 .eq('status', 'IN')
-                .order('waktu_masuk', { ascending: false })
+                .order('checkin_time', { ascending: false })
             
             if (error) throw error
             return { success: true, data }
@@ -28,7 +27,7 @@ export class TransaksiModel {
                 .from('transaksi')
                 .select('*')
                 .eq('status', 'DONE')
-                .order('waktu_keluar', { ascending: false })
+                .order('checkout_time', { ascending: false })
                 .limit(limit)
             
             if (error) throw error
@@ -97,10 +96,8 @@ export class TransaksiModel {
                 .from('transaksi')
                 .insert({
                     card_id: cardId,
-                    plat_nomor: platNomor || null,
-                    jenis: 'Motor',
-                    status: 'IN',
-                    petugas_masuk: petugasNama
+                    checkin_time: new Date().toISOString(),
+                    status: 'IN'
                 })
                 .select()
                 .single()
@@ -113,7 +110,7 @@ export class TransaksiModel {
     }
     
     // Check out motor (keluar parkir) - update status jadi OUT
-    static async checkOut(cardId, waktuKeluar, durasiMenit, biaya) {
+    static async checkOut(cardId, checkoutTime, duration, fee) {
         try {
             // Cek dulu apakah card_id sedang parkir
             const existing = await this.getByCardId(cardId)
@@ -131,9 +128,9 @@ export class TransaksiModel {
             const { data, error } = await supabase
                 .from('transaksi')
                 .update({
-                    waktu_keluar: waktuKeluar,
-                    durasi_menit: durasiMenit,
-                    biaya: biaya,
+                    checkout_time: checkoutTime,
+                    duration: duration,
+                    fee: fee,
                     status: 'OUT'
                 })
                 .eq('id', existing.data.id)
@@ -174,9 +171,9 @@ export class TransaksiModel {
                 .from('transaksi')
                 .select('*')
                 .eq('status', 'DONE')
-                .gte('waktu_masuk', dateFrom)
-                .lte('waktu_masuk', dateTo)
-                .order('waktu_masuk', { ascending: false })
+                .gte('checkin_time', dateFrom)
+                .lte('checkin_time', dateTo)
+                .order('checkin_time', { ascending: false })
             
             if (error) throw error
             return { success: true, data }
@@ -190,8 +187,8 @@ export class TransaksiModel {
         try {
             const { data, error } = await supabase
                 .from('transaksi')
-                .select('waktu_masuk, biaya')
-                .order('waktu_masuk', { ascending: true })
+                .select('checkin_time, fee')
+                .order('checkin_time', { ascending: true })
             
             if (error) throw error
             return { success: true, data }
