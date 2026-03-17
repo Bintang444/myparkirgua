@@ -2,7 +2,7 @@
 
 // Format durasi dalam menit jadi "X jam Y menit"
 export function formatDurasi(menit) {
-    if (!menit || menit < 0) return '-'
+    if (menit == null || menit < 0) return '-'
     
     const jam = Math.floor(menit / 60)
     const sisaMenit = menit % 60
@@ -47,19 +47,6 @@ export function formatTanggalWaktu(date) {
     return new Date(date).toLocaleString('id-ID')
 }
 
-// Validasi Card ID (harus ada & minimal 3 karakter)
-export function validateCardId(cardId) {
-    if (!cardId || cardId.trim().length === 0) {
-        return { valid: false, error: 'Card ID wajib diisi!' }
-    }
-    
-    if (cardId.trim().length < 3) {
-        return { valid: false, error: 'Card ID minimal 3 karakter!' }
-    }
-    
-    return { valid: true }
-}
-
 // Get tanggal hari ini (ISO format untuk database)
 export function getTodayISO() {
     const today = new Date()
@@ -75,7 +62,7 @@ export function getTodayEndISO() {
 }
 
 // Group data by tanggal untuk chart
-export function groupByTanggal(data, keyField = 'waktu_masuk') {
+export function groupByTanggal(data, keyField = 'checkin_time') {
     const grouped = {}
     
     data.forEach(item => {
@@ -101,5 +88,5 @@ export function countByTanggal(data) {
 
 // Sum biaya
 export function sumBiaya(data) {
-    return data.reduce((sum, item) => sum + (item.biaya || 0), 0)
+    return data.reduce((sum, item) => sum + (item.fee || 0), 0)
 }
