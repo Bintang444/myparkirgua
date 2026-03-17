@@ -78,6 +78,22 @@ utils/         → Helper functions
 🔄 Ready for refactor to multi-vehicle  
 🚀 Siap dikembangkan lebih lanjut
 
+## 🗃️ Skema Database (Sesuai soal UKK)
+Tabel `transaksi`:
+- `id` (integer, pk)
+- `card_id` (text)
+- `checkin_time` (timestamp)
+- `checkout_time` (timestamp)
+- `duration` (integer, menit)
+- `fee` (integer, rupiah)
+- `status` (text: IN/OUT/DONE)
+
+## ▶️ Cara Jalankan
+1. Buka `index.html` dengan Live Server atau `npx serve`.
+2. Login user `petugas`/`owner`.
+3. Petugas: scan RFID (`card_id`) untuk check-in/check-out.
+4. Owner: lihat laporan dan ekspor CSV.
+
 ---
 
 ## 👨‍💻 Developer
