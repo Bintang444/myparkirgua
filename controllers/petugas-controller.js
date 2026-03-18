@@ -1,7 +1,6 @@
 import { TransaksiModel } from '../models/transaksi-model.js'
 import { mqttController } from './mqtt-controller.js'
 import { MQTT_CONFIG } from '../config/mqtt-config.js'
-import { supabase } from '../config/supabase.js'
 import { 
     formatDurasi, 
     hitungDurasi, 
@@ -41,18 +40,13 @@ export class PetugasController {
 
     // Load TABEL 1: Check-In (status IN)
     async loadCheckIn() {
-        const { data, error } = await supabase
-            .from('transaksi')
-            .select('*')
-            .eq('status', 'IN')
-            .order('checkin_time', { ascending: false })
-        
-        if (error) {
-            console.error('Error loading check-in:', error)
+        const result = await TransaksiModel.getTransaksiParkir()
+        if (!result.success) {
+            console.error('Error loading check-in:', result.error)
             return
         }
         
-        const checkIn = data || []
+        const checkIn = result.data || []
         
         const jumlahEl = document.getElementById('jumlahCheckIn')
         if (jumlahEl) jumlahEl.textContent = checkIn.length
@@ -85,18 +79,13 @@ export class PetugasController {
     
     // Load TABEL 2: Check-Out (status OUT)
     async loadCheckOut() {
-        const { data, error } = await supabase
-            .from('transaksi')
-            .select('*')
-            .eq('status', 'OUT')
-            .order('checkout_time', { ascending: false })
-        
-        if (error) {
-            console.error('Error loading check-out:', error)
+        const result = await TransaksiModel.getTransaksiCheckOut()
+        if (!result.success) {
+            console.error('Error loading check-out:', result.error)
             return
         }
         
-        const checkOut = data || []
+        const checkOut = result.data || []
         
         const jumlahEl = document.getElementById('jumlahCheckOut')
         if (jumlahEl) jumlahEl.textContent = checkOut.length
@@ -259,20 +248,14 @@ export class PetugasController {
     async handleBukaPalang(transaksiId) {
         if (!transaksiId) return
         
-        const { data, error } = await supabase
-            .from('transaksi')
-            .update({
-                status: 'DONE',
-                petugas_keluar: this.profile.nama
-            })
-            .eq('id', transaksiId)
-            .select()
-            .single()
+        const result = await TransaksiModel.konfirmasiKeluar(transaksiId, this.profile.nama)
         
-        if (error) {
-            showError('Gagal membuka palang: ' + error.message)
+        if (!result.success) {
+            showError('Gagal membuka palang: ' + result.error)
             return
         }
+        
+        const data = result.data
         
         // MQTT: Buka palang Exit
         mqttController.publishServo('exit', 'open')
@@ -369,20 +352,15 @@ export class PetugasController {
         const durasiMenit = hitungDurasi(transaksi.checkin_time)
         const biaya = hitungBiaya(durasiMenit, tarif)
         
-        const { data, error } = await supabase
-            .from('transaksi')
-            .update({
-                checkout_time: new Date().toISOString(),
-                duration: durasiMenit,
-                fee: biaya,
-                status: 'OUT'
-            })
-            .eq('id', transaksi.id)
-            .select()
-            .single()
+        const checkOutResult = await TransaksiModel.checkOut(
+            cardId,
+            new Date().toISOString(),
+            durasiMenit,
+            biaya
+        )
         
-        if (error) {
-            showError('Error: ' + error.message)
+        if (!checkOutResult.success) {
+            showError('Error: ' + checkOutResult.error)
             return
         }
         
