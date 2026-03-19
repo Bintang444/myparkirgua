@@ -9,8 +9,8 @@
 #include <Adafruit_SSD1306.h>
 
 /* ================= WIFI & MQTT ================= */
-const char *ssid = "Wokwi-GUEST";
-const char *password = "";
+const char *ssid     = "binbin";
+const char *password = "12121212";
 
 const char *mqtt_server = "broker.hivemq.com";
 const int mqtt_port = 1883;
