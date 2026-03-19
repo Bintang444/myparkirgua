@@ -97,7 +97,8 @@ export class TransaksiModel {
                 .insert({
                     card_id: cardId,
                     checkin_time: new Date().toISOString(),
-                    status: 'IN'
+                    status: 'IN',
+                    petugas_masuk: petugasNama || 'Petugas Parkir'
                 })
                 .select()
                 .single()
