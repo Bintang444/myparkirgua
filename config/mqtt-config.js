@@ -3,7 +3,7 @@
 export const MQTT_CONFIG = {
     // MQTT Broker
     broker: 'broker.hivemq.com',
-    port: 8000, // WebSocket port (untuk browser)
+    port: 8884, // WebSocket Secure port (wss, untuk browser via HTTPS)
     
     // Client ID
     clientId: 'dashboard_' + Math.random().toString(16).substr(2, 8),
