@@ -12,7 +12,7 @@ export class MQTTController {
 
     // Initialize MQTT connection
     init() {
-        const wsUrl = `ws://${MQTT_CONFIG.broker}:${MQTT_CONFIG.port}/mqtt`
+        const wsUrl = `wss://${MQTT_CONFIG.broker}:${MQTT_CONFIG.port}/mqtt`
 
         console.log('Connecting to MQTT broker (secure):', wsUrl)
 
