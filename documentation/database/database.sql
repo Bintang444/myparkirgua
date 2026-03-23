@@ -39,28 +39,40 @@ CREATE TABLE IF NOT EXISTS transaksi (
     fee             INTEGER,                            -- Total biaya parkir dalam rupiah, NULL saat masih parkir
     status          TEXT NOT NULL DEFAULT 'IN'          -- Status transaksi
                     CHECK (status IN ('IN', 'OUT', 'DONE')),
+    petugas_masuk   TEXT,                               -- Nama petugas yang mencatat masuk
     petugas_keluar  TEXT                                -- Nama petugas yang mengkonfirmasi keluar
 );
 
 
 -- ------------------------------------------------------------
 -- DUMMY DATA: profiles
--- Data akun pengguna untuk pengujian sistem
+-- 
+-- BACA SEBELUM IMPORT:
+-- Jangan langsung jalankan INSERT ini!
+-- 
+-- URUTAN YANG BENAR:
+-- 1. Buat user di Supabase Dashboard → Authentication → Users → Add User
+--    - owner@test.com  / password bebas
+--    - petugas@test.com / password bebas
+-- 2. Setelah dibuat, copy UUID masing-masing user dari kolom "UID"
+-- 3. Ganti UUID di bawah ini dengan UUID asli dari Supabase Auth
+-- 4. Baru jalankan INSERT ini di SQL Editor
+--
+-- Kalau urutan terbalik (INSERT dulu baru buat user di Auth),
+-- UUID tidak akan cocok dan login akan selalu gagal!
 -- ------------------------------------------------------------
-INSERT INTO profiles (id, email, nama, role, created_at) VALUES
+INSERT INTO profiles (id, email, nama, role) VALUES
 (
-    '0a9e386a-ed14-42f7-a03d-be2b7591fe87',
+    'GANTI-DENGAN-UUID-OWNER-DARI-SUPABASE-AUTH',   -- UUID dari Authentication > Users
     'owner@test.com',
     'Owner Parkir',
-    'owner',
-    '2026-02-09 01:18:33+00'
+    'owner'
 ),
 (
-    'cb663b97-7a98-42f6-8da0-17c2909bbb9c',
+    'GANTI-DENGAN-UUID-PETUGAS-DARI-SUPABASE-AUTH', -- UUID dari Authentication > Users
     'petugas@test.com',
     'Petugas Parkir',
-    'petugas',
-    '2026-02-09 01:18:16+00'
+    'petugas'
 );
 
 
