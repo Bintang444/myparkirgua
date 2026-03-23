@@ -1,7 +1,6 @@
 import { TransaksiModel } from '../models/transaksi-model.js'
 import { mqttController } from './mqtt-controller.js'
 import { MQTT_CONFIG } from '../config/mqtt-config.js'
-import { supabase } from '../config/supabase.js'
 import {
     formatDurasi,
     hitungDurasi,
@@ -21,15 +20,6 @@ export class PetugasController {
         this.profile = profile
     }
 
-    async loadData() {
-        await Promise.all([
-            this.loadCheckIn(),
-            this.loadCheckOut(),
-            this.loadRiwayat(),
-            this.updateCharts()
-        ])
-    }
-
     // Initialize
     async init() {
         await this.loadData()
@@ -45,6 +35,15 @@ export class PetugasController {
                 () => this.loadData()
             )
             .subscribe()
+    }
+
+    async loadData() {
+        await Promise.all([
+            this.loadCheckIn(),
+            this.loadCheckOut(),
+            this.loadRiwayat(),
+            this.updateCharts()
+        ])
     }
 
     // Load TABEL 1: Check-In (status IN)
