@@ -1,5 +1,5 @@
-import { AuthModel } from '../models/auth-model.js'
-import { showError } from '../utils/notification.js'
+import { AuthModel } from '/models/auth-model.js'
+import { showError } from '/utils/notification.js'
 
 // AUTH CONTROLLER
 // Handle authentication logic

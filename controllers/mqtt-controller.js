@@ -1,5 +1,5 @@
-import { MQTT_CONFIG } from '../config/mqtt-config.js'
-import { showSuccess, showError, showInfo } from '../utils/notification.js'
+import { MQTT_CONFIG } from '/config/mqtt-config.js'
+import { showSuccess, showError, showInfo } from '/utils/notification.js'
 
 // MQTT CONTROLLER
 // Handle MQTT communication
