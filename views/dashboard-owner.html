@@ -130,8 +130,8 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <script type="module">
-        import { AuthController } from '../controllers/auth-controller.js'
-        import { OwnerController } from '../controllers/owner-controller.js'
+        import { AuthController } from '/controllers/auth-controller.js'
+        import { OwnerController } from '/controllers/owner-controller.js'
         
         const authResult = await AuthController.checkAuth('owner')
         if (!authResult.success) throw new Error('Not authenticated')
