@@ -1,6 +1,7 @@
 import { TransaksiModel } from '../models/transaksi-model.js'
 import { mqttController } from './mqtt-controller.js'
 import { MQTT_CONFIG } from '../config/mqtt-config.js'
+import { supabase } from '../config/supabase.js'
 import {
     formatDurasi,
     hitungDurasi,
