@@ -4,14 +4,16 @@ import { supabase } from '/config/supabase.js'
 // Handle semua CRUD transaksi parkir motor
 export class TransaksiModel {
 
-    // Get transaksi yang sedang parkir (status IN)
-    static async getTransaksiParkir() {
+    // Get transaksi yang sedang parkir (status IN) dengan pagination
+    static async getTransaksiParkir(limit = 10, page = 1) {
         try {
+            const offset = (page - 1) * limit
             const { data, error } = await supabase
                 .from('transaksi')
                 .select('*')
                 .eq('status', 'IN')
                 .order('checkin_time', { ascending: false })
+                .range(offset, offset + limit - 1)
 
             if (error) throw error
             return { success: true, data }
@@ -20,18 +22,49 @@ export class TransaksiModel {
         }
     }
 
-    // Get transaksi yang sudah selesai (status DONE)
-    static async getTransaksiSelesai(limit = 10) {
+    // Hitung total transaksi parkir (status IN)
+    static async countTransaksiParkir() {
         try {
+            const { count, error } = await supabase
+                .from('transaksi')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'IN')
+
+            if (error) throw error
+            return { success: true, count }
+        } catch (error) {
+            return { success: false, error: error.message }
+        }
+    }
+
+    // Get transaksi yang sudah selesai (status DONE) dengan pagination
+    static async getTransaksiSelesai(limit = 10, page = 1) {
+        try {
+            const offset = (page - 1) * limit
             const { data, error } = await supabase
                 .from('transaksi')
                 .select('*')
                 .eq('status', 'DONE')
                 .order('checkout_time', { ascending: false })
-                .limit(limit)
+                .range(offset, offset + limit - 1)
 
             if (error) throw error
             return { success: true, data }
+        } catch (error) {
+            return { success: false, error: error.message }
+        }
+    }
+
+    // Hitung total transaksi selesai (untuk pagination)
+    static async countTransaksiSelesai() {
+        try {
+            const { count, error } = await supabase
+                .from('transaksi')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'DONE')
+
+            if (error) throw error
+            return { success: true, count }
         } catch (error) {
             return { success: false, error: error.message }
         }
@@ -110,17 +143,34 @@ export class TransaksiModel {
         }
     }
 
-    // Get transaksi yang sudah checkout (status OUT)
-    static async getTransaksiCheckOut() {
+    // Get transaksi yang sudah checkout (status OUT) dengan pagination
+    static async getTransaksiCheckOut(limit = 10, page = 1) {
         try {
+            const offset = (page - 1) * limit
             const { data, error } = await supabase
                 .from('transaksi')
                 .select('*')
                 .eq('status', 'OUT')
                 .order('checkout_time', { ascending: false })
+                .range(offset, offset + limit - 1)
 
             if (error) throw error
             return { success: true, data }
+        } catch (error) {
+            return { success: false, error: error.message }
+        }
+    }
+
+    // Hitung total transaksi checkout (status OUT)
+    static async countTransaksiCheckOut() {
+        try {
+            const { count, error } = await supabase
+                .from('transaksi')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'OUT')
+
+            if (error) throw error
+            return { success: true, count }
         } catch (error) {
             return { success: false, error: error.message }
         }
