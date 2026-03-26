@@ -95,7 +95,7 @@ export class MQTTController {
 
         const message = typeof payload === 'string' ? payload : JSON.stringify(payload)
 
-        this.client.publish(topic, message, { qos: 0, properties: { messageExpiryInterval: 0 } }, (err) => {
+        this.client.publish(topic, message, { qos: 0 }, (err) => {
             if (err) {
                 console.error('Error publish:', err)
             } else {
