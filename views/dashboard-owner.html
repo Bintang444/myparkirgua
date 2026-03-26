@@ -105,6 +105,11 @@
                     </tbody>
                 </table>
             </div>
+            <div class="pagination-bar">
+                <button id="transaksi-prev" class="btn-secondary btn-sm" onclick="prevTransaksi()" disabled>&laquo; Prev</button>
+                <span id="transaksi-page-info" class="muted small">Halaman 1 / 1</span>
+                <button id="transaksi-next" class="btn-secondary btn-sm" onclick="nextTransaksi()" disabled>Next &raquo;</button>
+            </div>
         </section>
 
         <!-- SECTION: MOTOR SEDANG PARKIR -->
@@ -122,6 +127,11 @@
                         <tr><td colspan="5" class="text-center">Memuat data...</td></tr>
                     </tbody>
                 </table>
+            </div>
+            <div class="pagination-bar">
+                <button id="parkir-prev" class="btn-secondary btn-sm" onclick="prevParkir()" disabled>&laquo; Prev</button>
+                <span id="parkir-page-info" class="muted small">Halaman 1 / 1</span>
+                <button id="parkir-next" class="btn-secondary btn-sm" onclick="nextParkir()" disabled>Next &raquo;</button>
             </div>
         </section>
     </div>
@@ -171,8 +181,12 @@
         await ownerController.loadTarifTable()
 
         // === LAINNYA ===
-        window.filterData  = async () => await ownerController.filterData()
-        window.exportData  = ()       => ownerController.exportToExcel()
+        window.filterData    = async () => await ownerController.filterData()
+        window.exportData    = ()       => ownerController.exportToExcel()
+        window.prevTransaksi = ()       => ownerController.prevTransaksi()
+        window.nextTransaksi = ()       => ownerController.nextTransaksi()
+        window.prevParkir    = async () => await ownerController.prevParkir()
+        window.nextParkir    = async () => await ownerController.nextParkir()
         window.handleLogout = async () => {
             if (confirm('Yakin ingin logout?')) {
                 await AuthController.handleLogout()

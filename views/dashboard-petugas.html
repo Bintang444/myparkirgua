@@ -75,6 +75,11 @@
                     </tbody>
                 </table>
             </div>
+            <div class="pagination-bar">
+                <button id="checkin-prev" class="btn-secondary btn-sm" onclick="prevCheckIn()" disabled>&laquo; Prev</button>
+                <span id="checkin-page-info" class="muted small">Halaman 1 / 1</span>
+                <button id="checkin-next" class="btn-secondary btn-sm" onclick="nextCheckIn()" disabled>Next &raquo;</button>
+            </div>
         </section>
 
         <!-- SECTION: TABEL 2 - CHECK-OUT -->
@@ -115,7 +120,7 @@
 
         <!-- SECTION: TABEL 3 - RIWAYAT -->
         <section class="card">
-            <h2>Riwayat Transaksi Selesai (10 Terakhir)</h2>
+            <h2>Riwayat Transaksi Selesai</h2>
             <div class="table-info muted">
                 Motor yang sudah selesai transaksi dan keluar dari area parkir
             </div>
@@ -133,10 +138,19 @@
                     </thead>
                     <tbody id="riwayat-body">
                         <tr>
-                            <td colspan="7" class="text-center muted">Belum ada riwayat</td>
+                            <td colspan="6" class="text-center muted">Belum ada riwayat</td>
                         </tr>
                     </tbody>
                 </table>
+            </div>
+            <div class="pagination-bar">
+                <button id="riwayat-prev" class="btn-secondary btn-sm" onclick="prevRiwayat()" disabled>
+                    &laquo; Prev
+                </button>
+                <span id="riwayat-page-info" class="muted small">Halaman 1 / 1</span>
+                <button id="riwayat-next" class="btn-secondary btn-sm" onclick="nextRiwayat()" disabled>
+                    Next &raquo;
+                </button>
             </div>
         </section>
     </div>
@@ -186,6 +200,11 @@
         window.bukaPalang = async (transaksiId) => {
             await petugasController.handleBukaPalang(transaksiId)
         }
+
+        window.prevCheckIn = async () => await petugasController.prevCheckIn()
+        window.nextCheckIn = async () => await petugasController.nextCheckIn()
+        window.prevRiwayat = async () => await petugasController.prevRiwayat()
+        window.nextRiwayat = async () => await petugasController.nextRiwayat()
 
         window.handleLogout = async () => {
             if (confirm('Yakin ingin logout?')) {
