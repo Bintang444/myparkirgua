@@ -238,7 +238,7 @@ export class OwnerController {
         
         const totalPendapatan = sumBiaya(this.currentData)
         excelData.push({})
-        excelData.push({ 'No': 'RINGKASAN' })
+        excelData.push({ 'No': 'RINGKASAN' }) 
         excelData.push({ 'No': 'Total Transaksi', 'Tanggal': this.currentData.length })
         excelData.push({ 'No': 'Total Pendapatan', 'Tanggal': totalPendapatan })
         
