@@ -18,6 +18,9 @@ const tarif = 2000
 export class PetugasController {
     constructor(profile) {
         this.profile = profile
+        // Pagination state untuk setiap tabel
+        this.checkinPage  = 1; this.checkinLimit  = 10; this.checkinTotal  = 0
+        this.riwayatPage  = 1; this.riwayatLimit  = 10; this.riwayatTotal  = 0
     }
     
     // Initialize
@@ -38,36 +41,37 @@ export class PetugasController {
         ])
     }
 
-    // Load TABEL 1: Check-In (status IN)
+    // Load TABEL 1: Check-In (status IN) dengan pagination
     async loadCheckIn() {
-        const result = await TransaksiModel.getTransaksiParkir()
+        const countResult = await TransaksiModel.countTransaksiParkir()
+        if (countResult.success) this.checkinTotal = countResult.count || 0
+
+        const result = await TransaksiModel.getTransaksiParkir(this.checkinLimit, this.checkinPage)
         if (!result.success) {
             console.error('Error loading check-in:', result.error)
             return
         }
-        
+
         const checkIn = result.data || []
-        
         const jumlahEl = document.getElementById('jumlahCheckIn')
-        if (jumlahEl) jumlahEl.textContent = checkIn.length
-        
+        if (jumlahEl) jumlahEl.textContent = this.checkinTotal
+
         const tbody = document.getElementById('checkin-body')
         if (!tbody) return
-        
+
         if (checkIn.length === 0) {
-            tbody.innerHTML = `
-                <tr><td colspan="6" class="text-center muted">Belum ada motor parkir</td></tr>
-            `
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center muted">Belum ada motor parkir</td></tr>`
+            this.updatePaginationUI('checkin', this.checkinPage, this.checkinTotal, this.checkinLimit)
             return
         }
-        
+
+        const offset = (this.checkinPage - 1) * this.checkinLimit
         tbody.innerHTML = checkIn.map((t, index) => {
-            const durasiMenit = hitungDurasi(t.checkin_time)
+            const durasiMenit   = hitungDurasi(t.checkin_time)
             const estimasiBiaya = hitungBiaya(durasiMenit, tarif)
-            
             return `
                 <tr>
-                    <td>${index + 1}</td>
+                    <td>${offset + index + 1}</td>
                     <td><strong>${t.card_id}</strong></td>
                     <td>${new Date(t.checkin_time).toLocaleString('id-ID')}</td>
                     <td>${formatDurasi(durasiMenit)}</td>
@@ -75,6 +79,8 @@ export class PetugasController {
                 </tr>
             `
         }).join('')
+
+        this.updatePaginationUI('checkin', this.checkinPage, this.checkinTotal, this.checkinLimit)
     }
     
     // Load TABEL 2: Check-Out (status OUT)
@@ -84,66 +90,67 @@ export class PetugasController {
             console.error('Error loading check-out:', result.error)
             return
         }
-        
+
         const checkOut = result.data || []
-        
         const jumlahEl = document.getElementById('jumlahCheckOut')
         if (jumlahEl) jumlahEl.textContent = checkOut.length
-        
+
         const tbody = document.getElementById('checkout-body')
         if (!tbody) return
-        
+
         if (checkOut.length === 0) {
-            tbody.innerHTML = `
-                <tr><td colspan="9" class="text-center muted">Belum ada motor checkout</td></tr>
-            `
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center muted">Belum ada motor checkout</td></tr>`
             return
         }
-        
-        tbody.innerHTML = checkOut.map((t, index) => {
-            return `
-                <tr class="highlight-row">
-                    <td>${index + 1}</td>
-                    <td><strong>${t.card_id}</strong></td>
-                    <td>${new Date(t.checkin_time).toLocaleString('id-ID')}</td>
-                    <td>${new Date(t.checkout_time).toLocaleString('id-ID')}</td>
-                    <td>${formatDurasi(t.duration)}</td>
-                    <td><strong class="text-success" style="font-size: 1.1em;">${formatRupiah(t.fee)}</strong></td>
-                    <td>
-                        <button class="btn-secondary btn-sm" onclick="cetakStruk('${t.id}')">
-                            Cetak Struk
-                        </button>
-                        <button class="btn-primary btn-sm" onclick="bukaPalang('${t.id}')">
-                            Buka Palang
-                        </button>
-                    </td>
-                </tr>
-            `
-        }).join('')
+
+        tbody.innerHTML = checkOut.map((t, index) => `
+            <tr class="highlight-row">
+                <td>${index + 1}</td>
+                <td><strong>${t.card_id}</strong></td>
+                <td>${new Date(t.checkin_time).toLocaleString('id-ID')}</td>
+                <td>${new Date(t.checkout_time).toLocaleString('id-ID')}</td>
+                <td>${formatDurasi(t.duration)}</td>
+                <td><strong class="text-success" style="font-size: 1.1em;">${formatRupiah(t.fee)}</strong></td>
+                <td>
+                    <button class="btn-secondary btn-sm" onclick="cetakStruk('${t.id}')">
+                        Cetak Struk
+                    </button>
+                    <button class="btn-primary btn-sm" onclick="bukaPalang('${t.id}')">
+                        Buka Palang
+                    </button>
+                </td>
+            </tr>
+        `).join('')
     }
     
-    // Load TABEL 3: Riwayat (status DONE)
+    // Load TABEL 3: Riwayat (status DONE) dengan pagination
     async loadRiwayat() {
-        const result = await TransaksiModel.getTransaksiSelesai(10)
+        // Ambil total data untuk hitung jumlah halaman
+        const countResult = await TransaksiModel.countTransaksiSelesai()
+        if (countResult.success) {
+            this.riwayatTotal = countResult.count || 0
+        }
+
+        const result = await TransaksiModel.getTransaksiSelesai(this.riwayatLimit, this.riwayatPage)
         if (!result.success) {
             console.error('Error loading riwayat:', result.error)
             return
         }
-        
+
         const riwayat = result.data
-        const tbody = document.getElementById('riwayat-body')
+        const tbody   = document.getElementById('riwayat-body')
         if (!tbody) return
-        
+
         if (riwayat.length === 0) {
-            tbody.innerHTML = `
-                <tr><td colspan="7" class="text-center muted">Belum ada riwayat</td></tr>
-            `
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center muted">Belum ada riwayat</td></tr>`
+            this.updatePaginationUI('riwayat', this.riwayatPage, this.riwayatTotal, this.riwayatLimit)
             return
         }
-        
+
+        const offset = (this.riwayatPage - 1) * this.riwayatLimit
         tbody.innerHTML = riwayat.map((t, index) => `
             <tr>
-                <td>${index + 1}</td>
+                <td>${offset + index + 1}</td>
                 <td><strong>${t.card_id}</strong></td>
                 <td>${new Date(t.checkin_time).toLocaleString('id-ID')}</td>
                 <td>${new Date(t.checkout_time).toLocaleString('id-ID')}</td>
@@ -151,6 +158,44 @@ export class PetugasController {
                 <td><strong class="text-success">${formatRupiah(t.fee)}</strong></td>
             </tr>
         `).join('')
+
+        this.updatePaginationUI('riwayat', this.riwayatPage, this.riwayatTotal, this.riwayatLimit)
+    }
+
+    // Update tampilan pagination generik (dipakai semua tabel)
+    updatePaginationUI(prefix, currentPage, total, limit) {
+        const totalPages = Math.ceil(total / limit) || 1
+        const infoEl = document.getElementById(`${prefix}-page-info`)
+        const prevEl = document.getElementById(`${prefix}-prev`)
+        const nextEl = document.getElementById(`${prefix}-next`)
+
+        if (infoEl) infoEl.textContent = `Halaman ${currentPage} / ${totalPages} (${total} data)`
+        if (prevEl) prevEl.disabled = currentPage <= 1
+        if (nextEl) nextEl.disabled = currentPage >= totalPages
+    }
+
+    // Navigasi tabel Check-In
+    async prevCheckIn() {
+        if (this.checkinPage <= 1) return
+        this.checkinPage--
+        await this.loadCheckIn()
+    }
+    async nextCheckIn() {
+        if (this.checkinPage >= Math.ceil(this.checkinTotal / this.checkinLimit)) return
+        this.checkinPage++
+        await this.loadCheckIn()
+    }
+
+    // Navigasi tabel Riwayat
+    async prevRiwayat() {
+        if (this.riwayatPage <= 1) return
+        this.riwayatPage--
+        await this.loadRiwayat()
+    }
+    async nextRiwayat() {
+        if (this.riwayatPage >= Math.ceil(this.riwayatTotal / this.riwayatLimit)) return
+        this.riwayatPage++
+        await this.loadRiwayat()
     }
 
     // CETAK STRUK

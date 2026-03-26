@@ -18,8 +18,15 @@ const tarif = 2000
 // OWNER CONTROLLER
 export class OwnerController {
     constructor(profile) {
-        this.profile = profile
+        this.profile     = profile
         this.currentData = []
+        // Pagination tabel transaksi (client-side dari currentData)
+        this.transaksiPage  = 1
+        this.transaksiLimit = 10
+        // Pagination tabel motor parkir (server-side)
+        this.parkirPage  = 1
+        this.parkirLimit = 10
+        this.parkirTotal = 0
     }
 
     async init() {
@@ -59,19 +66,24 @@ export class OwnerController {
     }
     
     async loadTransaksiParkir() {
-        const result = await TransaksiModel.getTransaksiParkir()
+        const countResult = await TransaksiModel.countTransaksiParkir()
+        if (countResult.success) this.parkirTotal = countResult.count || 0
+
+        const result = await TransaksiModel.getTransaksiParkir(this.parkirLimit, this.parkirPage)
         if (!result.success) return
-        
+
         const parkir = result.data
         const tbody  = document.getElementById('parkir-body')
         if (!tbody) return
-        
+
         if (parkir.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center muted">Tidak ada motor parkir</td></tr>`
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center muted">Tidak ada motor parkir</td></tr>`
+            this.updatePaginationUI('parkir', this.parkirPage, this.parkirTotal, this.parkirLimit)
             return
         }
-        
-        tbody.innerHTML = parkir.map(t => {
+
+        const offset = (this.parkirPage - 1) * this.parkirLimit
+        tbody.innerHTML = parkir.map((t, index) => {
             const durasiMenit   = hitungDurasi(t.checkin_time)
             const estimasiBiaya = hitungBiaya(durasiMenit, tarif)
             return `
@@ -80,9 +92,22 @@ export class OwnerController {
                     <td>${formatTanggalWaktu(t.checkin_time)}</td>
                     <td>${formatDurasi(durasiMenit)}</td>
                     <td><strong>${formatRupiah(estimasiBiaya)}</strong></td>
-                </tr>
-    `
+                </tr>`
         }).join('')
+
+        this.updatePaginationUI('parkir', this.parkirPage, this.parkirTotal, this.parkirLimit)
+    }
+
+    async prevParkir() {
+        if (this.parkirPage <= 1) return
+        this.parkirPage--
+        await this.loadTransaksiParkir()
+    }
+
+    async nextParkir() {
+        if (this.parkirPage >= Math.ceil(this.parkirTotal / this.parkirLimit)) return
+        this.parkirPage++
+        await this.loadTransaksiParkir()
     }
     
     setDefaultDates() {
@@ -134,23 +159,62 @@ export class OwnerController {
     updateTransaksiTable() {
         const tbody = document.getElementById('transaksi-body')
         if (!tbody) return
-        
+
         if (this.currentData.length === 0) {
             tbody.innerHTML = `<tr><td colspan="7" class="text-center muted">Tidak ada data untuk periode ini</td></tr>`
+            this.updatePaginationUI('transaksi', 1, 0, this.transaksiLimit)
             return
         }
-        
-        tbody.innerHTML = this.currentData.map((t, index) => `
+
+        // Reset ke halaman 1 saat filter baru diterapkan
+        this.transaksiPage = 1
+        this.renderTransaksiPage()
+    }
+
+    renderTransaksiPage() {
+        const tbody = document.getElementById('transaksi-body')
+        if (!tbody) return
+
+        const offset   = (this.transaksiPage - 1) * this.transaksiLimit
+        const pageData = this.currentData.slice(offset, offset + this.transaksiLimit)
+
+        tbody.innerHTML = pageData.map((t, index) => `
             <tr>
-                <td>${index + 1}</td>
+                <td>${offset + index + 1}</td>
                 <td>${formatTanggal(t.checkin_time)}</td>
                 <td><strong>${t.card_id}</strong></td>
                 <td>${formatTanggalWaktu(t.checkin_time)}</td>
                 <td>${new Date(t.checkout_time).toLocaleTimeString('id-ID')}</td>
                 <td>${formatDurasi(t.duration)}</td>
                 <td><strong class="text-success">${formatRupiah(t.fee)}</strong></td>
-            </tr>
-    `).join('')
+            </tr>`
+        ).join('')
+
+        this.updatePaginationUI('transaksi', this.transaksiPage, this.currentData.length, this.transaksiLimit)
+    }
+
+    prevTransaksi() {
+        if (this.transaksiPage <= 1) return
+        this.transaksiPage--
+        this.renderTransaksiPage()
+    }
+
+    nextTransaksi() {
+        if (this.transaksiPage >= Math.ceil(this.currentData.length / this.transaksiLimit)) return
+        this.transaksiPage++
+        this.renderTransaksiPage()
+    }
+
+    // Update tampilan pagination generik
+    updatePaginationUI(prefix, currentPage, total, limit) {
+        const totalPages = Math.ceil(total / limit) || 1
+        const infoEl = document.getElementById(`${prefix}-page-info`)
+        const prevEl = document.getElementById(`${prefix}-prev`)
+        const nextEl = document.getElementById(`${prefix}-next`)
+
+        if (infoEl) infoEl.textContent = `Halaman ${currentPage} / ${totalPages} (${total} data)`
+        if (prevEl) prevEl.disabled = currentPage <= 1
+        if (nextEl) nextEl.disabled = currentPage >= totalPages
     }
     
     exportToExcel() {
