@@ -95,7 +95,7 @@ Tabel `transaksi`:
 4. Owner: lihat laporan dan ekspor CSV.
 
 ---
-
+ 
 ## 👨‍💻 Developer
 
 **Bintang Eka Wardhana Syarifudin**  
