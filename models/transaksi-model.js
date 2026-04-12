@@ -110,7 +110,7 @@ export class TransaksiModel {
     }
 
     // Check in motor (masuk parkir)
-    static async checkIn(cardId, platNomor, petugasNama) {
+    static async checkIn(cardId, petugasNama) {
         try {
             // Cek dulu apakah card_id sedang parkir
             const existing = await this.getByCardId(cardId)
