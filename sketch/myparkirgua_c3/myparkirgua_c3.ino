@@ -14,8 +14,8 @@
 #include <LiquidCrystal_I2C.h>
 
 /* ================= WIFI & MQTT ================= */
-const char *ssid     = "binbin";
-const char *password = "12121212";
+const char *ssid     = "SSID WIFI";
+const char *password = "PASSWORD WIFI";
 
 const char *mqtt_server = "broker.hivemq.com";
 const int   mqtt_port   = 1883;

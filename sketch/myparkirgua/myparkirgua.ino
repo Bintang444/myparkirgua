@@ -9,12 +9,12 @@
 #include <Adafruit_SSD1306.h>
 
 /* ================= WIFI & MQTT ================= */
-const char *ssid     = "POCOF6";
-const char *password = "1231231231";
+const char *ssid     = "SSID WIFI";
+const char *password = "PASSWORD WIFI";
 
 const char *mqtt_server = "broker.hivemq.com";
 const int mqtt_port = 1883;
-
+ 
 /* ================= MQTT TOPIC ================= */
 #define TOPIC_ENTRY_RFID  "parking/tbintanh/entry/rfid"
 #define TOPIC_EXIT_RFID   "parking/tbintanh/exit/rfid"
@@ -90,7 +90,7 @@ void reconnectMQTT()
 void openServo(Servo &servo)
 {
   servo.write(0);
-  delay(3000);
+  delay(10000);
   servo.write(90);
 }
 
@@ -173,7 +173,7 @@ String readRFID(MFRC522 &rfid)
 void setup()
 {
   Serial.begin(115200);
-
+  
   // RFID Setup
   SPI.begin();
   rfidEntry.PCD_Init();
@@ -186,7 +186,7 @@ void setup()
   servoExit.write(90);
 
   // OLED Init
-  Wire.begin(22 , 21);
+  Wire.begin(21, 22);
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
   {
     Serial.println("OLED not found");
