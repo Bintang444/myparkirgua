@@ -105,8 +105,8 @@ Software Engineering Student
 
 ## 📷 Preview
 
--
-
+![Tampilan App](assets/image/dashboard.png)
+![Tampilan Alat](assets/image/alat.jpg)
 
 ---
 
