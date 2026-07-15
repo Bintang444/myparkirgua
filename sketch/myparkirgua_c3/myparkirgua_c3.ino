@@ -14,8 +14,8 @@
 #include <LiquidCrystal_I2C.h>
 
 /* ================= WIFI & MQTT ================= */
-const char *ssid     = "SSID WIFI";
-const char *password = "PASSWORD WIFI";
+const char *ssid     = "binbin";
+const char *password = "12121212";
 
 const char *mqtt_server = "broker.hivemq.com";
 const int   mqtt_port   = 1883;
@@ -232,7 +232,7 @@ void setup()
     Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
 
     // LCD I2C 16x2 init
-    lcd.begin();
+    lcd.init();
     lcd.backlight();
 
     showLCD("Smart Parking", "System Ready");

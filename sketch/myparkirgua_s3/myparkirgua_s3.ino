@@ -1,6 +1,6 @@
 // ============================================================
 //  myparkirgua_s3.ino  –  Versi ESP32-S3 (ENTRY ONLY)
-//  1 RFID + 1 Servo + LCD I2C 16x2 + MQTT
+//  Pin khusus ESP32-S3 + LCD I2C 16x2 + 1 RFID + 1 Servo + MQTT
 // ============================================================
 
 #include <Arduino.h>
@@ -25,28 +25,31 @@ const int   mqtt_port   = 1883;
 #define TOPIC_LCD         "parking/tbintanh/lcd"
 
 /* ================= RFID (ESP32-S3) =================
-   SPI: SCK=15  MOSI=16  MISO=17
-   RFID Entry : SS=18  RST=21
+   SPI: SCK=7  MOSI=8  MISO=9
+   RFID Entry : SS=10  RST=2
    ================================================== */
-#define SPI_SCK_PIN   15
-#define SPI_MOSI_PIN  16
-#define SPI_MISO_PIN  17
+#define SPI_SCK_PIN   7
+#define SPI_MOSI_PIN  8
+#define SPI_MISO_PIN  9
 
-#define RST_ENTRY_PIN 21
-#define SS_ENTRY_PIN  18
+#define RST_ENTRY_PIN 2
+#define SS_ENTRY_PIN  10
 
 MFRC522 rfidEntry(SS_ENTRY_PIN, RST_ENTRY_PIN);
 
-/* ================= SERVO ================= */
-#define SERVO_ENTRY_PIN 4
+/* ================= SERVO (ESP32-S3) =================
+   Servo Entry : GPIO 1
+   ================================================== */
+#define SERVO_ENTRY_PIN 1
 
 Servo servoEntry;
 
-/* ================= LCD I2C 16x2 =================
-   I2C: SDA=6  SCL=7
+/* ================= LCD I2C 16x2 (ESP32-S3) ==========
+   I2C: SDA=5  SCL=6
+   Alamat I2C LCD biasanya 0x27, coba 0x3F jika tidak muncul
    ================================================== */
-#define I2C_SDA_PIN 6
-#define I2C_SCL_PIN 7
+#define I2C_SDA_PIN 5
+#define I2C_SCL_PIN 6
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
@@ -56,28 +59,10 @@ PubSubClient  client(espClient);
 
 void connectWiFi()
 {
-    Serial.print("[WiFi] Connecting to ");
-    Serial.println(ssid);
-
-    WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
-
-    int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 30)
+    while (WiFi.status() != WL_CONNECTED)
     {
         delay(500);
-        Serial.print(".");
-        attempts++;
-    }
-
-    Serial.println();
-    if (WiFi.status() == WL_CONNECTED)
-    {
-        Serial.println("[WiFi] Connected: " + WiFi.localIP().toString());
-    }
-    else
-    {
-        Serial.println("[WiFi] GAGAL konek! Cek SSID/password/sinyal.");
     }
 }
 
@@ -99,11 +84,9 @@ void reconnectMQTT()
         {
             client.subscribe(TOPIC_ENTRY_SERVO);
             client.subscribe(TOPIC_LCD);
-            Serial.println("[MQTT] Connected!");
         }
         else
         {
-            Serial.print("[MQTT] Gagal, retry...");
             delay(2000);
         }
     }
@@ -112,9 +95,9 @@ void reconnectMQTT()
 /* ================= SERVO CONTROL ================= */
 void openServo()
 {
-    servoEntry.write(0);
-    delay(10000);
     servoEntry.write(90);
+    delay(3000);
+    servoEntry.write(0);
 }
 
 /* ================= LCD DISPLAY ================= */
@@ -140,7 +123,6 @@ void callback(char *topic, byte *payload, unsigned int length)
     {
         if (message.indexOf("OPEN") >= 0)
         {
-            Serial.println("[MQTT] Perintah buka palang!");
             openServo();
         }
     }
@@ -155,31 +137,38 @@ void callback(char *topic, byte *payload, unsigned int length)
 }
 
 /* ================= RFID READ ================= */
-String readRFID()
+String readRFID(MFRC522 &rfid)
 {
-    if (!rfidEntry.PICC_IsNewCardPresent())
-    {
-        return "";
-    }
-
-    if (!rfidEntry.PICC_ReadCardSerial())
+    if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial())
     {
         return "";
     }
 
     String uid = "";
-    for (byte i = 0; i < rfidEntry.uid.size; i++)
+    for (byte i = 0; i < rfid.uid.size; i++)
     {
-        if (rfidEntry.uid.uidByte[i] < 0x10)
-            uid += "0";
-        uid += String(rfidEntry.uid.uidByte[i], HEX);
+        uid += String(rfid.uid.uidByte[i], HEX);
     }
     uid.toUpperCase();
 
-    rfidEntry.PICC_HaltA();
-    rfidEntry.PCD_StopCrypto1();
+    rfid.PICC_HaltA();
+    rfid.PCD_StopCrypto1();
 
     return uid;
+}
+
+/* ================= DEBUG RFID ================= */
+void debugRFID(MFRC522 &rfid, String label)
+{
+    byte v = rfid.PCD_ReadRegister(MFRC522::VersionReg);
+    Serial.print("[RFID DEBUG] " + label + " VersionReg = 0x");
+    Serial.print(v, HEX);
+    if (v == 0x91 || v == 0x92)
+        Serial.println(" -> OK (MFRC522 terdeteksi)");
+    else if (v == 0x00 || v == 0xFF)
+        Serial.println(" -> ERROR! Tidak terdeteksi. Cek kabel SPI & SS/RST.");
+    else
+        Serial.println(" -> nilai tidak dikenal, mungkin bukan MFRC522");
 }
 
 /* ================= SETUP ================= */
@@ -188,52 +177,34 @@ void setup()
     Serial.begin(115200);
     delay(1000);
 
-    Serial.println("\n===== BOOT ESP32-S3 (ENTRY ONLY) =====");
+    Serial.println("\n===== BOOT ESP32-S3 =====");
 
-    // ----- RFID Init -----
+    // ----- SS pin HIGH dulu sebelum SPI -----
     pinMode(SS_ENTRY_PIN, OUTPUT);
     digitalWrite(SS_ENTRY_PIN, HIGH);
 
+    // ----- SPI -----
     SPI.begin(SPI_SCK_PIN, SPI_MISO_PIN, SPI_MOSI_PIN, SS_ENTRY_PIN);
+    Serial.println("[SPI] Begin SCK=7 MOSI=8 MISO=9");
 
-    Serial.println("[SPI] Begin: SCK=15 MOSI=16 MISO=17 SS=18");
-
+    // ----- RFID -----
+    Serial.println("[RFID] Init Entry...");
     rfidEntry.PCD_Init();
-    delay(100);
-
-    byte v = rfidEntry.PCD_ReadRegister(MFRC522::VersionReg);
-    Serial.print("[RFID] VersionReg = 0x");
-    Serial.print(v, HEX);
-    if (v == 0x91 || v == 0x92)
-    {
-        Serial.println(" -> OK (MFRC522 terdeteksi)");
-        rfidEntry.PCD_SetAntennaGain(MFRC522::RxGain_max);
-    }
-    else if (v == 0x00 || v == 0xFF)
-    {
-        Serial.println(" -> ERROR! Cek kabel SPI & power.");
-    }
-    else
-    {
-        Serial.println(" -> Chip tidak dikenal");
-    }
+    debugRFID(rfidEntry, "ENTRY");
 
     // ----- Servo -----
     servoEntry.attach(SERVO_ENTRY_PIN);
-    servoEntry.write(90);
-    Serial.println("[Servo] Init GPIO 4");
+    servoEntry.write(0);
 
-    // ----- LCD -----
+    // ----- I2C + LCD -----
     Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
     lcd.init();
     lcd.backlight();
     showLCD("Smart Parking", "System Ready");
-    Serial.println("[LCD] Init SDA=6 SCL=7");
 
-    // ----- WiFi -----
+    // ----- WiFi & MQTT -----
     connectWiFi();
-
-    // ----- MQTT -----
+    Serial.println("[WiFi] Connected: " + WiFi.localIP().toString());
     client.setServer(mqtt_server, mqtt_port);
     client.setCallback(callback);
 
@@ -249,12 +220,27 @@ void loop()
     }
     client.loop();
 
-    String uidEntry = readRFID();
-    if (uidEntry != "")
+    // --- ENTRY ---
+    if (rfidEntry.PICC_IsNewCardPresent())
     {
-        String payload = "{\"rfid\":\"" + uidEntry + "\"}";
-        client.publish(TOPIC_ENTRY_RFID, payload.c_str());
-        Serial.println("[RFID ENTRY] Terbaca: " + uidEntry + " -> Publish ke MQTT");
-        delay(2000);
+        Serial.println("[RFID ENTRY] Kartu terdeteksi...");
+        if (rfidEntry.PICC_ReadCardSerial())
+        {
+            String uid = "";
+            for (byte i = 0; i < rfidEntry.uid.size; i++)
+                uid += String(rfidEntry.uid.uidByte[i], HEX);
+            uid.toUpperCase();
+            rfidEntry.PICC_HaltA();
+            rfidEntry.PCD_StopCrypto1();
+
+            String payload = "{\"rfid\":\"" + uid + "\"}";
+            client.publish(TOPIC_ENTRY_RFID, payload.c_str());
+            Serial.println("[RFID ENTRY] Publish: " + payload);
+            delay(2000);
+        }
+        else
+        {
+            Serial.println("[RFID ENTRY] Gagal baca serial kartu.");
+        }
     }
 }
