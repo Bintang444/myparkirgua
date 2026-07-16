@@ -3,6 +3,7 @@
 // Format durasi dalam menit jadi "X jam Y menit"
 export function formatDurasi(menit) {
     if (menit == null || menit < 0) return '-'
+    if (menit < 1) return '< 1 menit'
     
     const jam = Math.floor(menit / 60)
     const sisaMenit = menit % 60
@@ -22,7 +23,7 @@ export function hitungDurasi(waktuMasuk, waktuKeluar = new Date()) {
 
 // Hitung biaya parkir (durasi dibulatkan ke atas per jam)
 export function hitungBiaya(durasiMenit, tarifPerJam) {
-    const durasiJam = Math.ceil(durasiMenit / 60)
+    const durasiJam = Math.max(1, Math.ceil(durasiMenit / 60))
     return durasiJam * tarifPerJam
 }
 

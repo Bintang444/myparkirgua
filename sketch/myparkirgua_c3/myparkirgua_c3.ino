@@ -32,12 +32,12 @@ const int   mqtt_port   = 1883;
    RFID Entry : SS=5   RST=4
    RFID Exit  : SS=10  RST=9
    ================================================== */
-#define SPI_SCK_PIN   6
+#define SPI_SCK_PIN   5
 #define SPI_MISO_PIN  7   // MISO = GPIO 7
-#define SPI_MOSI_PIN  2   // MOSI = GPIO 2
+#define SPI_MOSI_PIN  6   // MOSI = GPIO 2
 
 #define RST_ENTRY_PIN 4
-#define SS_ENTRY_PIN  5
+#define SS_ENTRY_PIN  2
 
 #define RST_EXIT_PIN  8  // GPIO 9 = tombol BOOT di C3 devkit, ganti ke GPIO 21
 #define SS_EXIT_PIN   10
