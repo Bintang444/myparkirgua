@@ -21,6 +21,17 @@
             </div>
         </header>
 
+        <!-- DEMO BANNER -->
+        <div class="demo-banner" id="demoBanner">
+            <div class="demo-banner-content">
+                <div class="demo-banner-text">
+                    <strong>Mode Demo</strong> — Lagi eksplor? 
+                    <span class="demo-banner-hint">Klik "Generate Demo Data" buat isi dashboard dengan data contoh.</span>
+                </div>
+            </div>
+            <button class="demo-banner-close" onclick="document.getElementById('demoBanner').style.display='none'">&times;</button>
+        </div>
+
         <!-- SECTION: STATISTIK RINGKASAN -->
         <section class="card">
             <h2>Ringkasan Hari Ini</h2>
@@ -47,6 +58,19 @@
             <h2>Tarif Parkir Motor</h2>
             <div class="table-info muted">Tarif default per jam: Rp 2.000</div>
             <div class="info-value" id="tarifMotor">Rp 2.000/jam</div>
+        </section>
+
+        <!-- DEMO: SEED DATA -->
+        <section class="card demo-card-section">
+            <div class="demo-toolbar">
+                <div>
+                    <strong>Demo Tools</strong>
+                    <div class="muted small">Isi database dengan data contoh untuk eksplorasi fitur</div>
+                </div>
+                <button class="btn-primary" onclick="seedDemoData()">
+                    Generate Demo Data
+                </button>
+            </div>
         </section>
 
 
@@ -192,6 +216,10 @@
                 await AuthController.handleLogout()
                 window.location.href = 'login.html'
             }
+        }
+
+        window.seedDemoData = async () => {
+            await ownerController.handleSeedDemoData()
         }
     </script>
 </body>

@@ -289,6 +289,93 @@ export class PetugasController {
         struk.document.close()
     }
 
+    // ─── DEMO: Manual Check-In ────────────────────────────
+    async handleManualCheckIn(cardId) {
+        if (!cardId || cardId.trim() === '') {
+            showError('Masukkan Card ID!')
+            return
+        }
+
+        cardId = cardId.trim().toUpperCase()
+
+        const result = await TransaksiModel.checkIn(cardId, this.profile.nama)
+        if (!result.success) {
+            if (result.code === 'ALREADY_PARKED') {
+                showWarning(`Motor ${cardId} sudah parkir!`)
+            } else {
+                showError('Error: ' + result.error)
+            }
+            return
+        }
+
+        showSuccess(`Motor ${cardId} berhasil check-in manual!`)
+        await this.loadData()
+    }
+
+    // ─── DEMO: Manual Check-Out ───────────────────────────
+    async handleManualCheckOut(cardId) {
+        if (!cardId || cardId.trim() === '') {
+            showError('Masukkan Card ID!')
+            return
+        }
+
+        cardId = cardId.trim().toUpperCase()
+
+        const transaksiResult = await TransaksiModel.getByCardId(cardId)
+        if (!transaksiResult.success) {
+            showError('Error: ' + transaksiResult.error)
+            return
+        }
+
+        if (!transaksiResult.data) {
+            showWarning(`Motor ${cardId} tidak sedang parkir!`)
+            return
+        }
+
+        const transaksi = transaksiResult.data
+        const durasiMenit = hitungDurasi(transaksi.checkin_time)
+        const biaya = hitungBiaya(durasiMenit, 2000)
+
+        const checkOutResult = await TransaksiModel.checkOut(
+            cardId,
+            new Date().toISOString(),
+            durasiMenit,
+            biaya
+        )
+
+        if (!checkOutResult.success) {
+            showError('Error: ' + checkOutResult.error)
+            return
+        }
+
+        showSuccess(`Motor ${cardId} checkout. Biaya: ${formatRupiah(biaya)}. Menunggu pembayaran...`)
+        await this.loadData()
+    }
+
+    // ─── DEMO: Seed Data ──────────────────────────────────
+    async handleSeedDemoData() {
+        const { count } = await TransaksiModel.countAll()
+        if (count && count > 0) {
+            const ok = confirm(
+                `Database sudah memiliki ${count} data.\n\n` +
+                'Klik OK untuk HAPUS SEMUA data dan generate ulang.\n' +
+                'Klik Cancel untuk batal.'
+            )
+            if (!ok) return
+            await TransaksiModel.deleteAllData()
+        }
+
+        const result = await TransaksiModel.seedDemoData()
+        if (!result.success) {
+            showError('Gagal generate data demo: ' + result.error)
+            return
+        }
+
+        showSuccess(`${result.data.length} data demo berhasil dibuat!`)
+        await this.loadData()
+        await this.updateCharts()
+    }
+
     // BUKA PALANG (konfirmasi petugas → update status DONE)
     async handleBukaPalang(transaksiId) {
         if (!transaksiId) return

@@ -249,6 +249,93 @@ export class TransaksiModel {
         }
     }
 
+    // ─── DEMO: Seed Data ──────────────────────────────────
+    static async seedDemoData() {
+        try {
+            const dummyCards = [
+                'A1B2C3D4', 'E5F6G7H8', 'I9J0K1L2', 'M3N4O5P6',
+                'Q7R8S9T0', 'U1V2W3X4', 'Y5Z6A7B8', 'C9D0E1F2'
+            ]
+            const petugasList = ['Petugas Parkir', 'Ahmad', 'Siti', 'Budi']
+            const now = new Date()
+            const records = []
+
+            for (let day = 6; day >= 0; day--) {
+                const date = new Date(now)
+                date.setDate(date.getDate() - day)
+                date.setHours(0, 0, 0, 0)
+
+                const txCount = 2 + Math.floor(Math.random() * 3)
+                for (let i = 0; i < txCount; i++) {
+                    const cardId = dummyCards[Math.floor(Math.random() * dummyCards.length)]
+                    const checkinHour = 7 + Math.floor(Math.random() * 10)
+                    const checkinMin = Math.floor(Math.random() * 60)
+                    const checkinTime = new Date(date)
+                    checkinTime.setHours(checkinHour, checkinMin, 0, 0)
+
+                    const duration = 30 + Math.floor(Math.random() * 330)
+                    const checkoutTime = new Date(checkinTime.getTime() + duration * 60000)
+                    const fee = (Math.ceil(duration / 60) || 1) * 2000
+
+                    let status = 'DONE'
+                    if (day === 0 && i === 0) status = 'IN'
+                    if (day === 0 && i === 1) status = 'OUT'
+
+                    const petugasMasuk = petugasList[Math.floor(Math.random() * petugasList.length)]
+                    const petugasKeluar = status === 'DONE' ? petugasList[Math.floor(Math.random() * petugasList.length)] : null
+
+                    records.push({
+                        card_id: cardId,
+                        checkin_time: checkinTime.toISOString(),
+                        checkout_time: status === 'IN' ? null : checkoutTime.toISOString(),
+                        duration: status === 'IN' ? null : duration,
+                        fee: status === 'IN' ? null : fee,
+                        status: status,
+                        petugas_masuk: petugasMasuk,
+                        petugas_keluar: petugasKeluar
+                    })
+                }
+            }
+
+            const { data, error } = await supabase
+                .from('transaksi')
+                .insert(records)
+                .select()
+
+            if (error) throw error
+            return { success: true, data }
+        } catch (error) {
+            return { success: false, error: error.message }
+        }
+    }
+
+    static async countAll() {
+        try {
+            const { count, error } = await supabase
+                .from('transaksi')
+                .select('*', { count: 'exact', head: true })
+
+            if (error) throw error
+            return { success: true, count }
+        } catch (error) {
+            return { success: false, error: error.message }
+        }
+    }
+
+    static async deleteAllData() {
+        try {
+            const { error } = await supabase
+                .from('transaksi')
+                .delete()
+                .neq('id', 0)
+
+            if (error) throw error
+            return { success: true }
+        } catch (error) {
+            return { success: false, error: error.message }
+        }
+    }
+
     // Get semua transaksi untuk chart
     static async getAllForChart() {
         try {

@@ -33,6 +33,26 @@
                 </button>
             </form>
 
+            <div class="demo-section">
+                <div class="demo-divider"><span>atau coba demo</span></div>
+                <div class="demo-buttons">
+                    <div class="demo-card" data-role="owner" onclick="demoLogin('owner')">
+                        <div class="demo-card-info">
+                            <div class="demo-card-role">Owner</div>
+                            <div class="demo-card-email">owner@test.com</div>
+                        </div>
+                        <div class="demo-card-action">&raquo;</div>
+                    </div>
+                    <div class="demo-card" data-role="petugas" onclick="demoLogin('petugas')">
+                        <div class="demo-card-info">
+                            <div class="demo-card-role">Petugas</div>
+                            <div class="demo-card-email">petugas@test.com</div>
+                        </div>
+                        <div class="demo-card-action">&raquo;</div>
+                    </div>
+                </div>
+            </div>
+
             <div id="errorMsg" class="error-msg" style="display:none;"></div>
         </div>
     </div>
@@ -86,6 +106,25 @@
         
         // Make handleLogin global for onclick
         window.handleLogin = handleLogin
+        
+        // ─── Demo One-Click Login ──────────────────────────
+        // 🔧 UBAH PASSWORD di sini sesuai akun Supabase Auth kamu
+        const DEMO_ACCOUNTS = {
+            owner:   { email: 'owner@test.com',   password: 'owner123' },
+            petugas: { email: 'petugas@test.com', password: 'petugas123' }
+        }
+
+        window.demoLogin = async function (role) {
+            const account = DEMO_ACCOUNTS[role]
+            if (!account) return
+
+            // Isi form
+            document.getElementById('email').value = account.email
+            document.getElementById('password').value = account.password
+
+            // Trigger login
+            await handleLogin()
+        }
     </script>
 </body>
 </html>

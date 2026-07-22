@@ -217,6 +217,30 @@ export class OwnerController {
         if (nextEl) nextEl.disabled = currentPage >= totalPages
     }
     
+    // ─── DEMO: Seed Data ──────────────────────────────────
+    async handleSeedDemoData() {
+        const { count } = await TransaksiModel.countAll()
+        if (count && count > 0) {
+            const ok = confirm(
+                `Database sudah memiliki ${count} data.\n\n` +
+                'Klik OK untuk HAPUS SEMUA data dan generate ulang.\n' +
+                'Klik Cancel untuk batal.'
+            )
+            if (!ok) return
+            await TransaksiModel.deleteAllData()
+        }
+
+        const result = await TransaksiModel.seedDemoData()
+        if (!result.success) {
+            showError('Gagal generate data demo: ' + result.error)
+            return
+        }
+
+        showSuccess(`${result.data.length} data demo berhasil dibuat!`)
+        await this.init()
+        await this.loadTarifTable()
+    }
+
     exportToExcel() {
         if (!this.currentData || this.currentData.length === 0) {
             showError('⚠️ Tidak ada data untuk di-export. Lakukan filter terlebih dahulu!')

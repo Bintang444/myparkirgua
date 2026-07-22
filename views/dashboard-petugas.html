@@ -22,6 +22,46 @@
             </div>
         </header>
 
+        <!-- DEMO BANNER -->
+        <div class="demo-banner" id="demoBanner">
+            <div class="demo-banner-content">
+                <div class="demo-banner-text">
+                    <strong>Mode Demo</strong> — Ga punya alat IoT? Gas aja pake manual!
+                    <span class="demo-banner-hint">Gunakan form <strong>Check-In Manual</strong> dan <strong>Check-Out Manual</strong> di bawah.</span>
+                </div>
+            </div>
+            <button class="demo-banner-close" onclick="document.getElementById('demoBanner').style.display='none'">&times;</button>
+        </div>
+
+        <!-- DEMO: MANUAL CHECK-IN / OUT -->
+        <section class="card demo-card-section">
+            <div class="demo-manual-grid">
+                <div class="demo-manual-card">
+                    <h3>Check-In Manual</h3>
+                    <div class="demo-manual-form">
+                        <input type="text" id="manualCardIn" placeholder="Masukkan Card ID, misal: DEMO001" class="demo-manual-input">
+                        <button class="btn-success" onclick="manualCheckIn()">Check-In</button>
+                    </div>
+                </div>
+                <div class="demo-manual-card">
+                    <h3>Check-Out Manual</h3>
+                    <div class="demo-manual-form">
+                        <input type="text" id="manualCardOut" placeholder="Masukkan Card ID motor yang keluar" class="demo-manual-input">
+                        <button class="btn-warning" onclick="manualCheckOut()">Check-Out</button>
+                    </div>
+                </div>
+                <div class="demo-manual-card demo-tool-card">
+                    <div class="demo-toolbar">
+                        <div>
+                            <strong>Demo Tools</strong>
+                            <div class="muted small">Isi database dengan data contoh</div>
+                        </div>
+                        <button class="btn-primary" onclick="seedDemoData()">Generate Data</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- SECTION: INFO TARIF -->
         <section class="card info-card">
             <div class="info-grid">
@@ -70,7 +110,7 @@
                     </thead>
                     <tbody id="checkin-body">
                         <tr>
-                            <td colspan="5" class="text-center muted">Belum ada motor parkir</td>
+                            <td colspan="6" class="text-center muted">Belum ada motor parkir</td>
                         </tr>
                     </tbody>
                 </table>
@@ -211,6 +251,27 @@
                 await AuthController.handleLogout()
                 window.location.href = 'login.html'
             }
+        }
+
+        // ─── DEMO: Manual Check-In ─────────────────────────
+        window.manualCheckIn = async () => {
+            const cardId = document.getElementById('manualCardIn').value.trim()
+            await petugasController.handleManualCheckIn(cardId)
+            document.getElementById('manualCardIn').value = ''
+        }
+
+        // ─── DEMO: Manual Check-Out ────────────────────────
+        window.manualCheckOut = async (cardId) => {
+            if (!cardId) {
+                cardId = document.getElementById('manualCardOut').value.trim()
+            }
+            await petugasController.handleManualCheckOut(cardId)
+            document.getElementById('manualCardOut').value = ''
+        }
+
+        // ─── DEMO: Seed Data ───────────────────────────────
+        window.seedDemoData = async () => {
+            await petugasController.handleSeedDemoData()
         }
     </script>
 </body>
